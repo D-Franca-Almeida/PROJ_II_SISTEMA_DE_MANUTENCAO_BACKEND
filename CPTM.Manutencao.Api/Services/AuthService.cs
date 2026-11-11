@@ -17,6 +17,7 @@ namespace CPTM.Manutencao.Api.Services
     public class AuthService : IAuthService
     {
         private static readonly Usuario UsuarioFantasma = new() { Matricula = string.Empty };
+        private static string? _hashFantasma;
 
         private readonly IConfiguration _configuration;
         private readonly ManutencaoDbContext _db;
@@ -36,10 +37,11 @@ namespace CPTM.Manutencao.Api.Services
             var matriculaLimpa = matricula.Trim();
             var usuario = _db.Usuarios.AsNoTracking().FirstOrDefault(u => u.Matricula == matriculaLimpa);
 
-            // Matrícula inexistente também executa um hash, para não distinguir os casos pelo tempo de resposta.
+            // Matrícula inexistente executa a mesma verificação (um PBKDF2) contra um hash fictício, para não distinguir os casos pelo tempo de resposta.
+            var hashFantasma = _hashFantasma ??= _hasher.HashPassword(UsuarioFantasma, Guid.NewGuid().ToString());
             var resultado = _hasher.VerifyHashedPassword(
                 usuario ?? UsuarioFantasma,
-                usuario?.SenhaHash ?? _hasher.HashPassword(UsuarioFantasma, senha),
+                usuario?.SenhaHash ?? hashFantasma,
                 senha);
 
             if (usuario == null) return null;
