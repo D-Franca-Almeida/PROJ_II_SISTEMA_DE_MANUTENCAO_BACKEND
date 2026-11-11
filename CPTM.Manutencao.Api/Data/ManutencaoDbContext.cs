@@ -65,6 +65,14 @@ namespace CPTM.Manutencao.Api.Data
                 entidade.Property(s => s.MotivoDevolucao).HasMaxLength(500);
                 entidade.Property(s => s.MatriculaSolicitante).HasMaxLength(30).IsRequired();
                 entidade.Property(s => s.MatriculaTecnico).HasMaxLength(30);
+                entidade.Property(s => s.FotoUrl).HasMaxLength(300);
+                entidade.Property(s => s.DataAbertura)
+                    .HasConversion(v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+                entidade.HasOne(s => s.Equipamento)
+                    .WithMany()
+                    .HasForeignKey(s => s.EquipamentoId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                entidade.HasIndex(s => s.EquipamentoId);
                 entidade.HasIndex(s => s.Status);
                 entidade.HasIndex(s => s.MatriculaSolicitante);
 

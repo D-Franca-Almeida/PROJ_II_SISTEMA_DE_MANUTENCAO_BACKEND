@@ -13,12 +13,15 @@ public sealed class CptmApiFactory : WebApplicationFactory<Program>
 {
     private readonly string _arquivoBanco = Path.Combine(Path.GetTempPath(), $"cptm-teste-{Guid.NewGuid():N}.db");
 
+    public string PastaUploads { get; } = Path.Combine(Path.GetTempPath(), $"cptm-uploads-{Guid.NewGuid():N}");
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
         builder.UseSetting("Database:Provider", "Sqlite");
         builder.UseSetting("Database:RecriarAoIniciar", "true");
         builder.UseSetting("ConnectionStrings:Sqlite", $"Data Source={_arquivoBanco}");
+        builder.UseSetting("Uploads:Raiz", PastaUploads);
     }
 
     public async Task<string> LoginAsync(string matricula, string senha = "senha")
@@ -50,5 +53,6 @@ public sealed class CptmApiFactory : WebApplicationFactory<Program>
         SqliteConnection.ClearAllPools();
         foreach (var arquivo in new[] { _arquivoBanco, _arquivoBanco + "-wal", _arquivoBanco + "-shm" })
             try { File.Delete(arquivo); } catch (IOException) { }
+        try { Directory.Delete(PastaUploads, true); } catch (IOException) { }
     }
 }

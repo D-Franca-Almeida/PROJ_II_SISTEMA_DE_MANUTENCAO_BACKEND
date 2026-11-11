@@ -431,3 +431,5 @@ FodyWeavers.xsd
 .claude/
 docs/
 progress.md
+CPTM.Manutencao.Api/wwwroot/uploads/
+wwwroot/uploads/

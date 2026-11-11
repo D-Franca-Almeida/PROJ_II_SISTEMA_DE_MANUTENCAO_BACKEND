@@ -9,5 +9,7 @@ namespace CPTM.Manutencao.Api.Data
         bool EstacaoExiste(int estacaoId);
 
         List<EquipamentoDto> ListarEquipamentos(int estacaoId);
+
+        EquipamentoDetalheDto? ObterEquipamento(int equipamentoId);
     }
 }

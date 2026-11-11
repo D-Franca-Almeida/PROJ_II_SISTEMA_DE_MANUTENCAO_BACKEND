@@ -31,5 +31,11 @@ namespace CPTM.Manutencao.Api.Data
                 .OrderBy(e => e.Descricao).ThenBy(e => e.Id)
                 .Select(e => new EquipamentoDto(e.Id, e.EstacaoId, e.Descricao, e.Patrimonio))
                 .ToList();
+
+        public EquipamentoDetalheDto? ObterEquipamento(int equipamentoId) =>
+            _db.Equipamentos.AsNoTracking()
+                .Where(e => e.Id == equipamentoId)
+                .Select(e => new EquipamentoDetalheDto(e.Id, e.Descricao, e.Patrimonio, e.EstacaoId, e.Estacao!.Nome, e.Estacao.Linha))
+                .FirstOrDefault();
     }
 }
