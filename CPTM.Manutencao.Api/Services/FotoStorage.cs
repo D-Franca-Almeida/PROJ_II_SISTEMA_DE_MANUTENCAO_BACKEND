@@ -29,15 +29,30 @@ namespace CPTM.Manutencao.Api.Services
         public async Task<string> SalvarAsync(IFormFile arquivo, string extensao)
         {
             var nome = $"{Guid.NewGuid():N}{extensao}";
-            await using (var destino = new FileStream(Path.Combine(_pasta, nome), FileMode.CreateNew))
+            var caminho = Path.Combine(_pasta, nome);
+            try
+            {
+                await using var destino = new FileStream(caminho, FileMode.CreateNew);
                 await arquivo.CopyToAsync(destino);
+            }
+            catch
+            {
+                ExcluirArquivo(caminho);
+                throw;
+            }
             return $"{RequestPath}/{Subpasta}/{nome}";
         }
 
         public void Excluir(string url)
         {
-            var caminho = Path.Combine(_pasta, Path.GetFileName(url));
-            try { File.Delete(caminho); } catch (IOException) { }
+            ExcluirArquivo(Path.Combine(_pasta, Path.GetFileName(url)));
+        }
+
+        private static void ExcluirArquivo(string caminho)
+        {
+            try { File.Delete(caminho); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
         }
     }
 }

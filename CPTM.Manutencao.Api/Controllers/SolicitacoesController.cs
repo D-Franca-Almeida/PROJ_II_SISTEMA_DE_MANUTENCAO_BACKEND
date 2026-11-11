@@ -22,6 +22,9 @@ namespace CPTM.Manutencao.Api.Controllers
         [HttpPost]
         [Authorize(Policy = "RequerPerfilComum")]
         [Consumes("multipart/form-data")]
+        [RequestSizeLimit(SolicitacaoService.TamanhoMaximoRequisicao)]
+        [RequestFormLimits(MultipartBodyLengthLimit = SolicitacaoService.TamanhoMaximoRequisicao)]
+        [LimiteCorpo(SolicitacaoService.TamanhoMaximoRequisicao, "A foto deve ter no máximo 5 MB.")]
         public async Task<IActionResult> Criar([FromForm] CriarSolicitacaoRequest requisicao)
         {
             var matricula = User.FindFirst("Matricula")?.Value;
