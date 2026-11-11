@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using CPTM.Manutencao.Api.Models;
 using CPTM.Manutencao.Api.Services;
 
@@ -243,6 +244,67 @@ namespace CPTM.Manutencao.Api.Controllers
             catch (ConflitoDeConcorrenciaException ex)
             {
                 return Conflict(new { erro = ex.Message });
+            }
+        }
+
+        // ✅ CONCLUIR OSM (Apenas Técnico dono da OSM) - US-09: EM MANUTENCAO -> CONCLUIDA com laudo
+        [HttpPut("{id:int}/concluir")]
+        [Authorize(Policy = "RequerPerfilTecnico")]
+        public IActionResult Concluir(int id, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] ConclusaoOsmDto? dto)
+        {
+            var matricula = User.FindFirst("Matricula")?.Value;
+            if (string.IsNullOrEmpty(matricula))
+                return Forbid();
+
+            return Encerrar(id, () => _workflowService.ConcluirManutencao(id, dto?.Laudo, matricula),
+                "Manutenção concluída. OSM encerrada com laudo.", StatusSolicitacao.Concluida);
+        }
+
+        // ⛔ NÃO EXECUTAR (Apenas Técnico dono da OSM) - US-09: EM MANUTENCAO -> NAO EXECUTADA com motivo
+        [HttpPut("{id:int}/nao-executar")]
+        [Authorize(Policy = "RequerPerfilTecnico")]
+        public IActionResult NaoExecutar(int id, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] NaoExecucaoOsmDto? dto)
+        {
+            var matricula = User.FindFirst("Matricula")?.Value;
+            if (string.IsNullOrEmpty(matricula))
+                return Forbid();
+
+            return Encerrar(id, () => _workflowService.NaoExecutarManutencao(id, dto?.Motivo, matricula),
+                "Manutenção registrada como não executada. OSM encerrada.", StatusSolicitacao.NaoExecutada);
+        }
+
+        private IActionResult Encerrar(int id, Func<OrdemServico> acao, string mensagem, string novoStatus)
+        {
+            try
+            {
+                var ordem = acao();
+                return Ok(new
+                {
+                    mensagem,
+                    solicitacaoId = id,
+                    ordemServicoId = ordem.Id,
+                    tecnicoResponsavel = ordem.MatriculaTecnico,
+                    dataConclusao = ordem.DataConclusao,
+                    laudo = ordem.Laudo,
+                    motivoNaoExecucao = ordem.MotivoNaoExecucao,
+                    novoStatus
+                });
+            }
+            catch (SolicitacaoNaoEncontradaException ex)
+            {
+                return NotFound(new { erro = ex.Message });
+            }
+            catch (ConflitoDeConcorrenciaException ex)
+            {
+                return Conflict(new { erro = ex.Message });
+            }
+            catch (RegraDeNegocioException ex)
+            {
+                return BadRequest(new { erro = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
             }
         }
 

@@ -20,6 +20,9 @@ namespace CPTM.Manutencao.Api.Data
 
         public Solicitacao? ObterPorId(int id) => _contexto.Solicitacoes.Find(id);
 
+        public Solicitacao? ObterComOrdemServico(int id) =>
+            _contexto.Solicitacoes.Include(s => s.OrdemServico).FirstOrDefault(s => s.Id == id);
+
         public List<SolicitacaoDto> Listar(string? status, string? matriculaSolicitante)
         {
             var consulta = _contexto.Solicitacoes.AsNoTracking()

@@ -47,6 +47,7 @@ public sealed class SolicitacaoServiceTests : IDisposable
     private sealed class RepositorioQueFalha : ISolicitacaoRepository
     {
         public Solicitacao? ObterPorId(int id) => null;
+        public Solicitacao? ObterComOrdemServico(int id) => null;
         public List<SolicitacaoDto> Listar(string? status, string? matriculaSolicitante) => new();
         public SolicitacaoDetalheDto? ObterDetalhe(int id) => null;
         public List<CandidatoExpiracao> ObterCandidatosExpiracao() => new();

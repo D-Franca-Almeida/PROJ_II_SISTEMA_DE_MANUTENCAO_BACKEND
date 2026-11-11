@@ -9,6 +9,9 @@ namespace CPTM.Manutencao.Api.Data
     {
         Solicitacao? ObterPorId(int id);
 
+        // Solicitação rastreada com a OSM carregada, para gravar OSM + status no mesmo SaveChanges (US-09)
+        Solicitacao? ObterComOrdemServico(int id);
+
         // Mais recentes primeiro (DataAbertura desc, Id desc); filtros opcionais por status e solicitante
         List<SolicitacaoDto> Listar(string? status, string? matriculaSolicitante);
 

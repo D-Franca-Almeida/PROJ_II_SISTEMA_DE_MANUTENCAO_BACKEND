@@ -35,6 +35,10 @@ namespace CPTM.Manutencao.Api.Services
         // US-07: RECEBIDA -> EM MANUTENCAO (Técnico); abre a OSM na mesma gravação
         OrdemServico IniciarManutencao(int id, string matriculaTecnico);
 
+        // US-09: EM MANUTENCAO -> CONCLUIDA (laudo) / NAO EXECUTADA (motivo), só pelo técnico dono da OSM
+        OrdemServico ConcluirManutencao(int id, string? laudo, string matriculaTecnico);
+        OrdemServico NaoExecutarManutencao(int id, string? motivo, string matriculaTecnico);
+
         // US-22: APROVADA -> RECEBIDA (Admin), gera NumeroSsm SSM-AAAA-NNNNNN e DataRecebimento
         RecebimentoResultado ReceberNaOficina(int id, string matriculaAdmin);
 
@@ -123,6 +127,58 @@ namespace CPTM.Manutencao.Api.Services
                 throw new ConflitoDeConcorrenciaException(id, ex);
             }
             return ordem;
+        }
+
+        public const int TamanhoMaximoLaudo = 2000;
+        public const int TamanhoMaximoMotivoNaoExecucao = 500;
+
+        public OrdemServico ConcluirManutencao(int id, string? laudo, string matriculaTecnico)
+        {
+            var (solicitacao, ordem) = ObterParaEncerrar(id, matriculaTecnico, "concluir");
+
+            if (string.IsNullOrWhiteSpace(laudo))
+                throw new RegraDeNegocioException("O laudo técnico é obrigatório para concluir a OSM.");
+            var texto = laudo.Trim();
+            if (texto.Length > TamanhoMaximoLaudo)
+                throw new RegraDeNegocioException($"O laudo deve ter no máximo {TamanhoMaximoLaudo} caracteres.");
+
+            ordem.Laudo = texto;
+            ordem.DataConclusao = _relogio.GetUtcNow().UtcDateTime;
+            Transicionar(solicitacao, StatusSolicitacao.Concluida, ordem.MatriculaTecnico, $"OSM {ordem.Id} concluída.");
+            return ordem;
+        }
+
+        public OrdemServico NaoExecutarManutencao(int id, string? motivo, string matriculaTecnico)
+        {
+            var (solicitacao, ordem) = ObterParaEncerrar(id, matriculaTecnico, "registrar a não execução de");
+
+            if (string.IsNullOrWhiteSpace(motivo))
+                throw new RegraDeNegocioException("O motivo da não execução é obrigatório.");
+            var texto = motivo.Trim();
+            if (texto.Length > TamanhoMaximoMotivoNaoExecucao)
+                throw new RegraDeNegocioException($"O motivo deve ter no máximo {TamanhoMaximoMotivoNaoExecucao} caracteres.");
+
+            ordem.MotivoNaoExecucao = texto;
+            ordem.DataConclusao = _relogio.GetUtcNow().UtcDateTime;
+            Transicionar(solicitacao, StatusSolicitacao.NaoExecutada, ordem.MatriculaTecnico, texto);
+            return ordem;
+        }
+
+        // Dono da OSM primeiro (outro técnico -> 403, qualquer que seja o status), depois o status EM MANUTENCAO (400)
+        private (Solicitacao Solicitacao, OrdemServico Ordem) ObterParaEncerrar(int id, string matriculaTecnico, string acao)
+        {
+            var solicitacao = _repositorio.ObterComOrdemServico(id)
+                ?? throw new SolicitacaoNaoEncontradaException(id);
+            var ordem = solicitacao.OrdemServico;
+
+            if (ordem is not null && !string.Equals(ordem.MatriculaTecnico, matriculaTecnico?.Trim(), StringComparison.Ordinal))
+                throw new UnauthorizedAccessException("Somente o técnico responsável pela OSM pode encerrá-la.");
+
+            if (solicitacao.Status != StatusSolicitacao.EmManutencao || ordem is null)
+                throw new RegraDeNegocioException(
+                    $"Transição inválida: só é possível {acao} uma solicitação EM MANUTENCAO (status atual: {solicitacao.Status}).");
+
+            return (solicitacao, ordem);
         }
 
         public RecebimentoResultado ReceberNaOficina(int id, string matriculaAdmin)
