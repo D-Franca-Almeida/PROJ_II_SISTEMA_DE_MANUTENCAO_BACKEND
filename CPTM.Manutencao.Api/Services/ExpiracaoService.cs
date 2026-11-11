@@ -37,17 +37,28 @@ namespace CPTM.Manutencao.Api.Services
         private readonly IWorkflowService _workflow;
         private readonly TimeProvider _relogio;
         private readonly PrazosOptions _prazos;
+        private readonly ILogger<ExpiracaoService> _log;
 
-        public ExpiracaoService(ISolicitacaoRepository repositorio, IWorkflowService workflow, TimeProvider relogio, PrazosOptions prazos)
+        private static readonly object Trava = new();
+
+        public ExpiracaoService(ISolicitacaoRepository repositorio, IWorkflowService workflow, TimeProvider relogio, PrazosOptions prazos, ILogger<ExpiracaoService>? log = null)
         {
             _repositorio = repositorio;
             _workflow = workflow;
             _relogio = relogio;
             _prazos = prazos;
+            _log = log ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<ExpiracaoService>.Instance;
         }
 
         // Toda expiração é gravada com a matrícula SISTEMA; no disparo manual a observação registra o Admin que acionou.
+        // Job e disparo manual são serializados (Trava) para a mesma SSL não expirar duas vezes.
         public ResultadoExpiracao Executar(string? acionadoPor = null)
+        {
+            lock (Trava)
+                return ExecutarSerializado(acionadoPor);
+        }
+
+        private ResultadoExpiracao ExecutarSerializado(string? acionadoPor)
         {
             var agora = _relogio.GetUtcNow().UtcDateTime;
             var expiradas = new List<SolicitacaoExpirada>();
@@ -62,8 +73,15 @@ namespace CPTM.Manutencao.Api.Services
                 if (!string.IsNullOrWhiteSpace(acionadoPor))
                     observacao += $" Execução manual acionada por {acionadoPor}.";
 
-                _workflow.Transicionar(s, StatusSolicitacao.Expirada, HistoricoStatus.MatriculaSistema, observacao);
-                expiradas.Add(new SolicitacaoExpirada(s.Id, statusAnterior, candidato.DataReferencia));
+                try
+                {
+                    _workflow.Transicionar(s, StatusSolicitacao.Expirada, HistoricoStatus.MatriculaSistema, observacao);
+                    expiradas.Add(new SolicitacaoExpirada(s.Id, statusAnterior, candidato.DataReferencia));
+                }
+                catch (Exception ex)
+                {
+                    _log.LogError(ex, "Falha ao expirar a solicitação {Id}.", s.Id);
+                }
             }
 
             return new ResultadoExpiracao(expiradas.Count, expiradas);

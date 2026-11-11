@@ -183,4 +183,42 @@ public sealed class ExpiracaoServiceTests : IDisposable
         Assert.Throws<RegraDeNegocioException>(() => workflow.Transicionar(s, "APROVADA", "admin123"));
         Assert.Empty(Historico(id));
     }
+
+    [Fact]
+    public void Falha_em_uma_solicitacao_nao_interrompe_as_demais()
+    {
+        var primeira = Criar("DEVOLVIDA", T0.AddDays(-11));
+        var segunda = Criar("APROVADA", T0.AddDays(-11));
+        var repo = new SolicitacaoRepository(_db, _relogio, _prazos);
+        var workflow = new WorkflowQueFalha(new WorkflowService(repo, _relogio), primeira);
+
+        var r = new ExpiracaoService(repo, workflow, _relogio, _prazos).Executar();
+
+        Assert.Equal(segunda, Assert.Single(r.Solicitacoes).Id);
+        Assert.Equal("DEVOLVIDA", StatusDe(primeira));
+        Assert.Equal("EXPIRADA", StatusDe(segunda));
+    }
+
+    private sealed class WorkflowQueFalha : IWorkflowService
+    {
+        private readonly IWorkflowService _real;
+        private readonly int _idQueFalha;
+
+        public WorkflowQueFalha(IWorkflowService real, int idQueFalha)
+        {
+            _real = real;
+            _idQueFalha = idQueFalha;
+        }
+
+        public void AprovarTriagem(int id, string matriculaLogada) => _real.AprovarTriagem(id, matriculaLogada);
+        public void DevolverTriagem(int id, string motivo, string matriculaLogada) => _real.DevolverTriagem(id, motivo, matriculaLogada);
+        public void CancelarTriagem(int id, string matriculaLogada, string perfilLogado) => _real.CancelarTriagem(id, matriculaLogada, perfilLogado);
+        public void IniciarManutencao(int id, string matriculaTecnico) => _real.IniciarManutencao(id, matriculaTecnico);
+
+        public void Transicionar(Solicitacao solicitacao, string novoStatus, string matricula, string? observacao = null)
+        {
+            if (solicitacao.Id == _idQueFalha) throw new InvalidOperationException("falha simulada");
+            _real.Transicionar(solicitacao, novoStatus, matricula, observacao);
+        }
+    }
 }
