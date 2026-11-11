@@ -159,7 +159,8 @@ public sealed class RecebimentoSsmTests : IDisposable
         var repo = new RepositorioComLeituraDesatualizada(new SolicitacaoRepository(_db, _relogio), leiturasDesatualizadas: int.MaxValue);
         var servico = new WorkflowService(repo, _relogio);
 
-        Assert.Throws<DbUpdateException>(() => servico.ReceberNaOficina(id, "admin123"));
+        var ex = Assert.Throws<ConflitoDeConcorrenciaException>(() => servico.ReceberNaOficina(id, "admin123"));
+        Assert.IsAssignableFrom<DbUpdateException>(ex.InnerException);
 
         Assert.Equal(WorkflowService.TentativasSsm, repo.Consultas);
         Assert.Equal(StatusSolicitacao.Aprovada, Ler(id).Status);
