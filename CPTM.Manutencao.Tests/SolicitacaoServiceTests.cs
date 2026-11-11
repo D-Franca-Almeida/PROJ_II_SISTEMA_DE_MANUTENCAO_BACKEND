@@ -30,7 +30,8 @@ public sealed class SolicitacaoServiceTests : IDisposable
     private SolicitacaoService CriarServico(ISolicitacaoRepository? repositorio = null) =>
         new(new WorkflowService(repositorio ?? new SolicitacaoRepository(_db)),
             new CatalogoRepository(_db),
-            new FotoStorage(new UploadsOptions { Raiz = _raiz }));
+            new FotoStorage(new UploadsOptions { Raiz = _raiz }),
+            repositorio ?? new SolicitacaoRepository(_db));
 
     private static IFormFile Arquivo(string nome = "f.png", string contentType = "image/png", int tamanho = 10)
     {
@@ -46,6 +47,8 @@ public sealed class SolicitacaoServiceTests : IDisposable
     private sealed class RepositorioQueFalha : ISolicitacaoRepository
     {
         public Solicitacao? ObterPorId(int id) => null;
+        public List<SolicitacaoDto> Listar(string? status, string? matriculaSolicitante) => new();
+        public SolicitacaoDetalheDto? ObterDetalhe(int id) => null;
         public void Salvar(Solicitacao solicitacao, HistoricoStatus historico) => throw new InvalidOperationException("falha simulada");
     }
 
@@ -56,7 +59,7 @@ public sealed class SolicitacaoServiceTests : IDisposable
             new CriarSolicitacaoRequest { EquipamentoId = 4, Descricao = "Catraca quebrada", Foto = Arquivo() }, "comum123");
 
         Assert.Equal(StatusSolicitacao.Solicitada, dto.Status);
-        Assert.Equal("Brás", dto.Estacao.Nome);
+        Assert.Equal("Brás", dto.Estacao!.Nome);
         Assert.Equal(DateTimeKind.Utc, dto.DataAbertura.Kind);
         Assert.Single(Fotos());
 

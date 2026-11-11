@@ -5,7 +5,13 @@ namespace CPTM.Manutencao.Api.Services
 {
     public interface ISolicitacaoService
     {
-        Task<SolicitacaoCriadaDto> CriarAsync(CriarSolicitacaoRequest requisicao, string matricula);
+        Task<SolicitacaoDto> CriarAsync(CriarSolicitacaoRequest requisicao, string matricula);
+
+        List<SolicitacaoDto> Listar(string? status);
+
+        List<SolicitacaoDto> ListarDoSolicitante(string matricula);
+
+        SolicitacaoDetalheDto ObterDetalhe(int id, string matricula, string perfil);
     }
 
     public class SolicitacaoService : ISolicitacaoService
@@ -28,15 +34,17 @@ namespace CPTM.Manutencao.Api.Services
         private readonly IWorkflowService _workflow;
         private readonly ICatalogoRepository _catalogo;
         private readonly IFotoStorage _fotos;
+        private readonly ISolicitacaoRepository _solicitacoes;
 
-        public SolicitacaoService(IWorkflowService workflow, ICatalogoRepository catalogo, IFotoStorage fotos)
+        public SolicitacaoService(IWorkflowService workflow, ICatalogoRepository catalogo, IFotoStorage fotos, ISolicitacaoRepository solicitacoes)
         {
+            _solicitacoes = solicitacoes;
             _workflow = workflow;
             _catalogo = catalogo;
             _fotos = fotos;
         }
 
-        public async Task<SolicitacaoCriadaDto> CriarAsync(CriarSolicitacaoRequest requisicao, string matricula)
+        public async Task<SolicitacaoDto> CriarAsync(CriarSolicitacaoRequest requisicao, string matricula)
         {
             var descricao = requisicao.Descricao?.Trim();
             if (string.IsNullOrEmpty(descricao))
@@ -75,7 +83,7 @@ namespace CPTM.Manutencao.Api.Services
                 };
                 _workflow.Transicionar(solicitacao, StatusSolicitacao.Solicitada, matricula);
 
-                return new SolicitacaoCriadaDto(
+                return new SolicitacaoDto(
                     solicitacao.Id,
                     solicitacao.Status,
                     solicitacao.Descricao,
@@ -90,6 +98,29 @@ namespace CPTM.Manutencao.Api.Services
                 _fotos.Excluir(url);
                 throw;
             }
+        }
+
+        public List<SolicitacaoDto> Listar(string? status)
+        {
+            string? normalizado = null;
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                var pedido = status.Trim().Replace('_', ' ');
+                normalizado = StatusSolicitacao.Todos.FirstOrDefault(s => s.Equals(pedido, StringComparison.OrdinalIgnoreCase))
+                    ?? throw new RegraDeNegocioException(
+                        $"Status inválido '{status}'. Valores válidos: {string.Join(", ", StatusSolicitacao.Todos)}.");
+            }
+            return _solicitacoes.Listar(normalizado, null);
+        }
+
+        public List<SolicitacaoDto> ListarDoSolicitante(string matricula) => _solicitacoes.Listar(null, matricula);
+
+        public SolicitacaoDetalheDto ObterDetalhe(int id, string matricula, string perfil)
+        {
+            var detalhe = _solicitacoes.ObterDetalhe(id) ?? throw new SolicitacaoNaoEncontradaException(id);
+            if (perfil == "Comum" && detalhe.MatriculaSolicitante != matricula)
+                throw new UnauthorizedAccessException();
+            return detalhe;
         }
 
         private static async Task<bool> ConteudoCorrespondeAsync(IFormFile foto, byte[] assinatura)

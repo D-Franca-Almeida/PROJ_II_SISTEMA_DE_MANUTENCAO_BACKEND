@@ -7,6 +7,11 @@ namespace CPTM.Manutencao.Api.Data
     {
         Solicitacao? ObterPorId(int id);
 
+        // Mais recentes primeiro (DataAbertura desc, Id desc); filtros opcionais por status e solicitante
+        List<SolicitacaoDto> Listar(string? status, string? matriculaSolicitante);
+
+        SolicitacaoDetalheDto? ObterDetalhe(int id);
+
         // Grava a solicitação e a linha de histórico da transição na mesma transação (US-16)
         void Salvar(Solicitacao solicitacao, HistoricoStatus historico);
     }

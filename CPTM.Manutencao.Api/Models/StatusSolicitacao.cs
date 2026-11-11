@@ -10,5 +10,7 @@ namespace CPTM.Manutencao.Api.Models
         public const string Cancelada = "CANCELADA";
         public const string EmManutencao = "EM MANUTENCAO";
         public const string Concluida = "CONCLUIDA";
+
+        public static readonly string[] Todos = { Solicitada, Reenviada, Aprovada, Devolvida, Cancelada, EmManutencao, Concluida };
     }
 }
