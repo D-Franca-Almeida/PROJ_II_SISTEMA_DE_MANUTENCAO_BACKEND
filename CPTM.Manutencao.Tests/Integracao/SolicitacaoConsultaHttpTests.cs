@@ -97,6 +97,7 @@ public sealed class SolicitacaoConsultaHttpTests : IClassFixture<CptmApiFactory>
         Assert.Equal(JsonValueKind.Null, historico[0].GetProperty("statusAnterior").ValueKind);
         Assert.Equal("SOLICITADA", historico[0].GetProperty("statusNovo").GetString());
         Assert.Equal("comum123", historico[0].GetProperty("matricula").GetString());
+        Assert.EndsWith("Z", historico[0].GetProperty("data").GetString());
     }
 
     [Fact]
@@ -186,5 +187,27 @@ public sealed class SolicitacaoConsultaHttpTests : IClassFixture<CptmApiFactory>
         var historico = corpo.GetProperty("historico").EnumerateArray().ToList();
         Assert.Equal("DEVOLVIDA", historico[^1].GetProperty("statusNovo").GetString());
         Assert.Equal("admin123", historico[^1].GetProperty("matricula").GetString());
+        Assert.Equal("Foto desfocada", historico[^1].GetProperty("observacao").GetString());
+        Assert.EndsWith("Z", historico[^1].GetProperty("data").GetString());
+    }
+
+    [Fact]
+    public async Task Detalhe_em_manutencao_traz_tecnico_e_data_inicio_em_utc()
+    {
+        using var tecnico = await _api.CriarClienteLogadoAsync("tec123");
+        using var inicio = await tecnico.PutAsync("/api/Solicitacoes/8/iniciar-manutencao", null);
+        Assert.Equal(HttpStatusCode.OK, inicio.StatusCode);
+
+        using var comum = await _api.CriarClienteLogadoAsync("comum123");
+        using var resposta = await comum.GetAsync("/api/solicitacoes/8");
+
+        Assert.Equal(HttpStatusCode.OK, resposta.StatusCode);
+        var corpo = await LerJson(resposta);
+        Assert.Equal("EM MANUTENCAO", corpo.GetProperty("status").GetString());
+        Assert.Equal("tec123", corpo.GetProperty("matriculaTecnico").GetString());
+        Assert.EndsWith("Z", corpo.GetProperty("dataInicioManutencao").GetString());
+        var ultimo = corpo.GetProperty("historico").EnumerateArray().Last();
+        Assert.Equal("EM MANUTENCAO", ultimo.GetProperty("statusNovo").GetString());
+        Assert.EndsWith("Z", ultimo.GetProperty("data").GetString());
     }
 }

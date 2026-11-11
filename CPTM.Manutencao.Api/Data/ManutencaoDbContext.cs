@@ -68,6 +68,8 @@ namespace CPTM.Manutencao.Api.Data
                 entidade.Property(s => s.FotoUrl).HasMaxLength(300);
                 entidade.Property(s => s.DataAbertura)
                     .HasConversion(v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+                entidade.Property(s => s.DataInicioManutencao)
+                    .HasConversion(v => v, v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v);
                 entidade.HasOne(s => s.Equipamento)
                     .WithMany()
                     .HasForeignKey(s => s.EquipamentoId)
@@ -87,6 +89,8 @@ namespace CPTM.Manutencao.Api.Data
                 entidade.Property(h => h.StatusNovo).HasMaxLength(30).IsRequired();
                 entidade.Property(h => h.Matricula).HasMaxLength(30).IsRequired();
                 entidade.Property(h => h.Observacao).HasMaxLength(500);
+                entidade.Property(h => h.Data)
+                    .HasConversion(v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
                 entidade.HasOne(h => h.Solicitacao)
                     .WithMany()
                     .HasForeignKey(h => h.SolicitacaoId)

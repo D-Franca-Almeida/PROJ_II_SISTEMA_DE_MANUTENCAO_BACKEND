@@ -99,4 +99,20 @@ public sealed class SolicitacaoServiceTests : IDisposable
         Assert.Empty(Fotos());
         Assert.Equal(12, _db.Solicitacoes.Count());
     }
+
+    [Theory]
+    [InlineData("Comum")]
+    [InlineData("Almoxarifado")]
+    [InlineData("")]
+    public void Detalhe_de_ssl_alheia_e_negado_para_perfil_que_nao_e_admin_nem_tecnico(string perfil)
+    {
+        Assert.Throws<UnauthorizedAccessException>(() => CriarServico().ObterDetalhe(4, "comum123", perfil));
+    }
+
+    [Fact]
+    public void Detalhe_devolve_datas_do_historico_em_utc()
+    {
+        var detalhe = CriarServico().ObterDetalhe(1, "comum123", "Comum");
+        Assert.All(detalhe.Historico, h => Assert.Equal(DateTimeKind.Utc, h.Data.Kind));
+    }
 }

@@ -118,7 +118,8 @@ namespace CPTM.Manutencao.Api.Services
         public SolicitacaoDetalheDto ObterDetalhe(int id, string matricula, string perfil)
         {
             var detalhe = _solicitacoes.ObterDetalhe(id) ?? throw new SolicitacaoNaoEncontradaException(id);
-            if (perfil == "Comum" && detalhe.MatriculaSolicitante != matricula)
+            var veQualquer = perfil is "Administrativo" or "Tecnico";
+            if (!veQualquer && detalhe.MatriculaSolicitante != matricula)
                 throw new UnauthorizedAccessException();
             return detalhe;
         }
