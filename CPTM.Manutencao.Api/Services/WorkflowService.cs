@@ -146,8 +146,10 @@ namespace CPTM.Manutencao.Api.Services
                         Transicionar(solicitacao, StatusSolicitacao.Recebida, matriculaAdmin, $"SSM {solicitacao.NumeroSsm} gerada.");
                         return new RecebimentoResultado(solicitacao.Id, solicitacao.NumeroSsm, agora);
                     }
-                    catch (DbUpdateException) when (tentativa < TentativasSsm)
+                    catch (DbUpdateException ex) when (ex is not DbUpdateConcurrencyException)
                     {
+                        if (tentativa >= TentativasSsm)
+                            throw new ConflitoDeConcorrenciaException(id, ex);
                     }
                 }
             }
