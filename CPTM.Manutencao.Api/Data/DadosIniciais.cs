@@ -49,20 +49,20 @@ namespace CPTM.Manutencao.Api.Data
         public static Solicitacao[] Solicitacoes() => new[]
         {
             // IDs 1, 2 e 3: SOLICITADA, pertencentes ao usuário Comum (comum123)
-            Nova(1, "Lâmpada queimada na plataforma 2", StatusSolicitacao.Solicitada),
-            Nova(2, "Escada rolante com ruído", StatusSolicitacao.Solicitada),
-            Nova(3, "Catraca travada", StatusSolicitacao.Solicitada),
+            Nova(1, "Lâmpada queimada na plataforma 2", StatusSolicitacao.Solicitada, 1),
+            Nova(2, "Escada rolante com ruído", StatusSolicitacao.Solicitada, 5),
+            Nova(3, "Catraca travada", StatusSolicitacao.Solicitada, 2),
             // ID 4: SOLICITADA de OUTRO dono (teste de bloqueio: Comum não cancela chamado alheio)
-            Nova(4, "Vazamento no banheiro", StatusSolicitacao.Solicitada, "outro456"),
+            Nova(4, "Vazamento no banheiro", StatusSolicitacao.Solicitada, 4, "outro456"),
 
-            Nova(5, "Porta do vagão desalinhada", StatusSolicitacao.Cancelada),
-            Nova(6, "Aparelho de ar-condicionado com defeito", StatusSolicitacao.Solicitada),
-            Nova(7, "Grade de proteção solta", StatusSolicitacao.Solicitada),
-            Nova(8, "Ventilador do túnel sem funcionar", StatusSolicitacao.Aprovada),
-            Nova(9, "Sinalização apagada (devolvida)", StatusSolicitacao.Devolvida),
-            Nova(10, "Bebedouro sem pressão", StatusSolicitacao.EmManutencao),
-            Nova(11, "Piso solto na estação", StatusSolicitacao.Concluida),
-            Nova(12, "Escada rolante com ruído (corrigida)", StatusSolicitacao.Reenviada)
+            Nova(5, "Porta do vagão desalinhada", StatusSolicitacao.Cancelada, 8),
+            Nova(6, "Aparelho de ar-condicionado com defeito", StatusSolicitacao.Solicitada, 10),
+            Nova(7, "Grade de proteção solta", StatusSolicitacao.Solicitada, 11),
+            Nova(8, "Ventilador do túnel sem funcionar", StatusSolicitacao.Aprovada, 12),
+            Nova(9, "Sinalização apagada (devolvida)", StatusSolicitacao.Devolvida, 13),
+            Nova(10, "Bebedouro sem pressão", StatusSolicitacao.EmManutencao, 14),
+            Nova(11, "Piso solto na estação", StatusSolicitacao.Concluida, 9),
+            Nova(12, "Escada rolante com ruído (corrigida)", StatusSolicitacao.Reenviada, 5)
         };
 
         // Histórico coerente com a massa: abertura (nulo -> SOLICITADA) de todas e, para as que já
@@ -101,12 +101,14 @@ namespace CPTM.Manutencao.Api.Data
             return linhas.ToArray();
         }
 
-        private static Solicitacao Nova(int id, string descricao, string status, string matriculaSolicitante = "comum123") =>
+        private static Solicitacao Nova(int id, string descricao, string status, int equipamentoId, string matriculaSolicitante = "comum123") =>
             new()
             {
                 Id = id,
                 Descricao = descricao,
                 Status = status,
+                EquipamentoId = equipamentoId,
+                DataAbertura = new DateTime(2026, 11, 1, 12, 0, 0, DateTimeKind.Utc),
                 MatriculaSolicitante = matriculaSolicitante
             };
     }

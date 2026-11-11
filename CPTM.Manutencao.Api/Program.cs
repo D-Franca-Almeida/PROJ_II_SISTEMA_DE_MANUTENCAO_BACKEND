@@ -31,6 +31,16 @@ builder.Services.AddDbContext<ManutencaoDbContext>(opcoes =>
 builder.Services.AddScoped<ISolicitacaoRepository, SolicitacaoRepository>();
 builder.Services.AddScoped<IWorkflowService, WorkflowService>();
 builder.Services.AddScoped<ICatalogoRepository, CatalogoRepository>();
+builder.Services.AddScoped<ISolicitacaoService, SolicitacaoService>();
+
+// Fotos das SSLs ficam em disco (nunca no banco). A raiz vem de Uploads:Raiz (padrão: wwwroot/uploads).
+var raizUploads = builder.Configuration["Uploads:Raiz"];
+if (string.IsNullOrWhiteSpace(raizUploads))
+    raizUploads = Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "uploads");
+raizUploads = Path.GetFullPath(raizUploads);
+Directory.CreateDirectory(raizUploads);
+builder.Services.AddSingleton(new UploadsOptions { Raiz = raizUploads });
+builder.Services.AddSingleton<IFotoStorage, FotoStorage>();
 
 // CORS para os front-ends (web Vite e Expo web). As origens vêm de Cors:Origens.
 var origensPermitidas = builder.Configuration.GetSection("Cors:Origens").Get<string[]>() ?? Array.Empty<string>();
@@ -60,6 +70,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("RequerPerfilAdmin", policy => policy.RequireClaim("Perfil", "Administrativo"));
+    options.AddPolicy("RequerPerfilComum", policy => policy.RequireClaim("Perfil", "Comum"));
     options.AddPolicy("RequerPerfilTecnico", policy => policy.RequireClaim("Perfil", "Tecnico"));
 });
 
@@ -116,6 +127,12 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseCors("Frontends");
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(raizUploads),
+    RequestPath = FotoStorage.RequestPath
+});
 
 app.UseAuthentication();
 app.UseAuthorization();

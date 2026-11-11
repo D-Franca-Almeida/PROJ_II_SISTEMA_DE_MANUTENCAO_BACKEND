@@ -10,5 +10,9 @@ namespace CPTM.Manutencao.Api.Models
         public string MatriculaSolicitante { get; set; } = string.Empty;
         public string? MatriculaTecnico { get; set; }
         public DateTime? DataInicioManutencao { get; set; }
+        public DateTime DataAbertura { get; set; }
+        public string? FotoUrl { get; set; }
+        public int? EquipamentoId { get; set; }
+        public Equipamento? Equipamento { get; set; }
     }
 }

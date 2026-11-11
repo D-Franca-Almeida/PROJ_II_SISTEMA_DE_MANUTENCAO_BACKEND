@@ -10,10 +10,33 @@ namespace CPTM.Manutencao.Api.Controllers
     public class SolicitacoesController : ControllerBase
     {
         private readonly IWorkflowService _workflowService;
+        private readonly ISolicitacaoService _solicitacaoService;
 
-        public SolicitacoesController(IWorkflowService workflowService)
+        public SolicitacoesController(IWorkflowService workflowService, ISolicitacaoService solicitacaoService)
         {
             _workflowService = workflowService;
+            _solicitacaoService = solicitacaoService;
+        }
+
+        // ABRIR SSL com foto (Apenas Comum) - US-03
+        [HttpPost]
+        [Authorize(Policy = "RequerPerfilComum")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> Criar([FromForm] CriarSolicitacaoRequest requisicao)
+        {
+            var matricula = User.FindFirst("Matricula")?.Value;
+            if (string.IsNullOrEmpty(matricula))
+                return Forbid();
+
+            try
+            {
+                var criada = await _solicitacaoService.CriarAsync(requisicao, matricula);
+                return Created($"/api/Solicitacoes/{criada.Id}", criada);
+            }
+            catch (RegraDeNegocioException ex)
+            {
+                return BadRequest(new { erro = ex.Message });
+            }
         }
 
         // 🟢 APROVAR (Apenas Administrativo)

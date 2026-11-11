@@ -407,12 +407,22 @@ namespace CPTM.Manutencao.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime>("DataAbertura")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("DataInicioManutencao")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Descricao")
                         .IsRequired()
                         .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("EquipamentoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("FotoUrl")
+                        .HasMaxLength(300)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("MatriculaSolicitante")
@@ -435,6 +445,8 @@ namespace CPTM.Manutencao.Api.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("EquipamentoId");
+
                     b.HasIndex("MatriculaSolicitante");
 
                     b.HasIndex("Status");
@@ -445,84 +457,108 @@ namespace CPTM.Manutencao.Api.Data.Migrations
                         new
                         {
                             Id = 1,
+                            DataAbertura = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
                             Descricao = "Lâmpada queimada na plataforma 2",
+                            EquipamentoId = 1,
                             MatriculaSolicitante = "comum123",
                             Status = "SOLICITADA"
                         },
                         new
                         {
                             Id = 2,
+                            DataAbertura = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
                             Descricao = "Escada rolante com ruído",
+                            EquipamentoId = 5,
                             MatriculaSolicitante = "comum123",
                             Status = "SOLICITADA"
                         },
                         new
                         {
                             Id = 3,
+                            DataAbertura = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
                             Descricao = "Catraca travada",
+                            EquipamentoId = 2,
                             MatriculaSolicitante = "comum123",
                             Status = "SOLICITADA"
                         },
                         new
                         {
                             Id = 4,
+                            DataAbertura = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
                             Descricao = "Vazamento no banheiro",
+                            EquipamentoId = 4,
                             MatriculaSolicitante = "outro456",
                             Status = "SOLICITADA"
                         },
                         new
                         {
                             Id = 5,
+                            DataAbertura = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
                             Descricao = "Porta do vagão desalinhada",
+                            EquipamentoId = 8,
                             MatriculaSolicitante = "comum123",
                             Status = "CANCELADA"
                         },
                         new
                         {
                             Id = 6,
+                            DataAbertura = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
                             Descricao = "Aparelho de ar-condicionado com defeito",
+                            EquipamentoId = 10,
                             MatriculaSolicitante = "comum123",
                             Status = "SOLICITADA"
                         },
                         new
                         {
                             Id = 7,
+                            DataAbertura = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
                             Descricao = "Grade de proteção solta",
+                            EquipamentoId = 11,
                             MatriculaSolicitante = "comum123",
                             Status = "SOLICITADA"
                         },
                         new
                         {
                             Id = 8,
+                            DataAbertura = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
                             Descricao = "Ventilador do túnel sem funcionar",
+                            EquipamentoId = 12,
                             MatriculaSolicitante = "comum123",
                             Status = "APROVADA"
                         },
                         new
                         {
                             Id = 9,
+                            DataAbertura = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
                             Descricao = "Sinalização apagada (devolvida)",
+                            EquipamentoId = 13,
                             MatriculaSolicitante = "comum123",
                             Status = "DEVOLVIDA"
                         },
                         new
                         {
                             Id = 10,
+                            DataAbertura = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
                             Descricao = "Bebedouro sem pressão",
+                            EquipamentoId = 14,
                             MatriculaSolicitante = "comum123",
                             Status = "EM MANUTENCAO"
                         },
                         new
                         {
                             Id = 11,
+                            DataAbertura = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
                             Descricao = "Piso solto na estação",
+                            EquipamentoId = 9,
                             MatriculaSolicitante = "comum123",
                             Status = "CONCLUIDA"
                         },
                         new
                         {
                             Id = 12,
+                            DataAbertura = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
                             Descricao = "Escada rolante com ruído (corrigida)",
+                            EquipamentoId = 5,
                             MatriculaSolicitante = "comum123",
                             Status = "REENVIADA"
                         });
@@ -597,6 +633,16 @@ namespace CPTM.Manutencao.Api.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Solicitacao");
+                });
+
+            modelBuilder.Entity("CPTM.Manutencao.Api.Models.Solicitacao", b =>
+                {
+                    b.HasOne("CPTM.Manutencao.Api.Models.Equipamento", "Equipamento")
+                        .WithMany()
+                        .HasForeignKey("EquipamentoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Equipamento");
                 });
 #pragma warning restore 612, 618
         }
