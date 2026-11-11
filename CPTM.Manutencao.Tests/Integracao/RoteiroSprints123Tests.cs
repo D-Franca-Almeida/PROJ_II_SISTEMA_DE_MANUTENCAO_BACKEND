@@ -69,5 +69,9 @@ public sealed class RoteiroSprints123Tests : IClassFixture<CptmApiFactory>
         var passo11 = await Passo("11", HttpStatusCode.OK,
             comum.PutAsync("/api/Solicitacoes/2/reenviar", Formulario(("descricao", "Foto refeita com flash"))));
         Assert.Equal(StatusSolicitacao.Reenviada, passo11!.Value.GetProperty("status").GetString());
+
+        TemPropriedade("12", await Passo("12", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/2/aprovar", null)), "message");
+        TemPropriedade("13", await Passo("13", HttpStatusCode.OK, comum.PutAsync("/api/Solicitacoes/2/cancelar", null)), "message");
+        TemPropriedade("14", await Passo("14", HttpStatusCode.BadRequest, comum.PutAsync("/api/Solicitacoes/1/cancelar", null)), "erro");
     }
 }
