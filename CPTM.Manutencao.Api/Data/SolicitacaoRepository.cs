@@ -107,7 +107,15 @@ namespace CPTM.Manutencao.Api.Data
             historico.Solicitacao = solicitacao;
             _contexto.HistoricoStatus.Add(historico);
 
-            _contexto.SaveChanges();
+            try
+            {
+                _contexto.SaveChanges();
+            }
+            catch
+            {
+                _contexto.ChangeTracker.Clear();
+                throw;
+            }
         }
     }
 }
