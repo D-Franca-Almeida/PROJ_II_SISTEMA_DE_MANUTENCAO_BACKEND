@@ -17,13 +17,30 @@ namespace CPTM.Manutencao.Api.Models
 
     public record EquipamentoDetalheDto(int Id, string Descricao, string Patrimonio, int EstacaoId, string EstacaoNome, string Linha);
 
-    public record SolicitacaoCriadaDto(
+    public record SolicitacaoDto(
         int Id,
         string Status,
         string Descricao,
-        string FotoUrl,
+        string? FotoUrl,
         DateTime DataAbertura,
         string MatriculaSolicitante,
-        EquipamentoDto Equipamento,
-        EstacaoDto Estacao);
+        EquipamentoDto? Equipamento,
+        EstacaoDto? Estacao,
+        string? MotivoDevolucao = null);
+
+    public record HistoricoStatusDto(string? StatusAnterior, string StatusNovo, string Matricula, DateTime Data, string? Observacao);
+
+    public record SolicitacaoDetalheDto(
+        int Id,
+        string Status,
+        string Descricao,
+        string? FotoUrl,
+        DateTime DataAbertura,
+        string MatriculaSolicitante,
+        EquipamentoDto? Equipamento,
+        EstacaoDto? Estacao,
+        string? MotivoDevolucao,
+        string? MatriculaTecnico,
+        DateTime? DataInicioManutencao,
+        List<HistoricoStatusDto> Historico);
 }

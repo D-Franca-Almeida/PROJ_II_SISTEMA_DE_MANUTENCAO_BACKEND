@@ -18,6 +18,21 @@ namespace CPTM.Manutencao.Api.Controllers
             _solicitacaoService = solicitacaoService;
         }
 
+        // FILA DE PEDIDOS (Apenas Administrativo) - US-04
+        [HttpGet]
+        [Authorize(Policy = "RequerPerfilAdmin")]
+        public IActionResult Listar([FromQuery] string? status)
+        {
+            try
+            {
+                return Ok(_solicitacaoService.Listar(status));
+            }
+            catch (RegraDeNegocioException ex)
+            {
+                return BadRequest(new { erro = ex.Message });
+            }
+        }
+
         // ABRIR SSL com foto (Apenas Comum) - US-03
         [HttpPost]
         [Authorize(Policy = "RequerPerfilComum")]
