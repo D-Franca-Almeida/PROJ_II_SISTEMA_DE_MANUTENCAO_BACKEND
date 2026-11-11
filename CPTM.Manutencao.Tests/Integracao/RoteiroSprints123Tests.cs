@@ -29,6 +29,14 @@ public sealed class RoteiroSprints123Tests : IClassFixture<CptmApiFactory>
             throw new XunitException($"Passo #{passo}: corpo sem '{propriedade}': {corpo}");
     }
 
+    private static MultipartFormDataContent Formulario(params (string Nome, string Valor)[] campos)
+    {
+        var form = new MultipartFormDataContent();
+        foreach (var (nome, valor) in campos)
+            form.Add(new StringContent(valor), nome);
+        return form;
+    }
+
     [Fact]
     public async Task Roteiro_sprints_1_2_3_na_ordem()
     {
@@ -55,5 +63,11 @@ public sealed class RoteiroSprints123Tests : IClassFixture<CptmApiFactory>
         Assert.Equal(StatusSolicitacao.EmManutencao, passo9!.Value.GetProperty("novoStatus").GetString());
         Assert.Equal("tec123", passo9.Value.GetProperty("tecnicoResponsavel").GetString());
         Assert.Equal(1, passo9.Value.GetProperty("solicitacaoId").GetInt32());
+
+        TemPropriedade("10", await Passo("10", HttpStatusCode.BadRequest,
+            comum.PutAsync("/api/Solicitacoes/2/reenviar", Formulario(("descricao", "   ")))), "erro");
+        var passo11 = await Passo("11", HttpStatusCode.OK,
+            comum.PutAsync("/api/Solicitacoes/2/reenviar", Formulario(("descricao", "Foto refeita com flash"))));
+        Assert.Equal(StatusSolicitacao.Reenviada, passo11!.Value.GetProperty("status").GetString());
     }
 }
