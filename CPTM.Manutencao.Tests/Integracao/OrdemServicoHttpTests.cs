@@ -242,6 +242,7 @@ public sealed class OrdemServicoHttpTests : IClassFixture<CptmApiFactory>
         Assert.False(string.IsNullOrEmpty(item.GetProperty("estacao").GetProperty("nome").GetString()));
 
         using var assumida = await tecnico.PutAsync($"/api/solicitacoes/{antiga}/iniciar-manutencao", null);
+        Assert.Equal(HttpStatusCode.OK, assumida.StatusCode);
         using var depois = await tecnico.GetAsync("/api/solicitacoes/recebidas");
         Assert.DoesNotContain((await LerJson(depois)).EnumerateArray(), i => i.GetProperty("id").GetInt32() == antiga);
     }
