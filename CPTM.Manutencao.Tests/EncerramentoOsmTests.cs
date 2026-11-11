@@ -68,7 +68,8 @@ public sealed class EncerramentoOsmTests : IDisposable
     {
         var id = EmManutencao();
 
-        var ordem = _servico.ConcluirManutencao(id, "  Placa substituída e testada.  ", " tec123 ");
+        var (ordem, cancelados) = _servico.ConcluirManutencao(id, "  Placa substituída e testada.  ", " tec123 ");
+        Assert.Empty(cancelados);
 
         var (s, salva, historico) = Estado(id);
         Assert.Equal(StatusSolicitacao.Concluida, s.Status);

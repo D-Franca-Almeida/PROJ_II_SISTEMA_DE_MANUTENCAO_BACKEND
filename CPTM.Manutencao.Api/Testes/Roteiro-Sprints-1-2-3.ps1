@@ -89,8 +89,28 @@ Verificar 30 "PUT /1/concluir Tecnico (sem laudo)"      400 (Chamar "Put" "/api/
 Verificar 31 "PUT /1/concluir Tecnico (com laudo)"      200 (Chamar "Put" "/api/Solicitacoes/1/concluir" $tokTec '{ "laudo": "Fonte substituida e testada" }')
 Verificar 32 "PUT /1/concluir de novo"                  400 (Chamar "Put" "/api/Solicitacoes/1/concluir" $tokTec '{ "laudo": "x" }')
 Verificar 33 "PUT /6/nao-executar Tecnico (sem motivo)" 400 (Chamar "Put" "/api/Solicitacoes/6/nao-executar" $tokTec '{ }')
+Verificar "33a" "POST /ordens-servico/4/pecas Tecnico (OSM da SSL 6)" 201 (Chamar "Post" "/api/ordens-servico/4/pecas" $tokTec '{ "item": "Motor 220V", "quantidade": 1, "justificativa": "Motor queimado" }')
 Verificar 34 "PUT /6/nao-executar Tecnico (com motivo)" 200 (Chamar "Put" "/api/Solicitacoes/6/nao-executar" $tokTec '{ "motivo": "Equipamento sem conserto viavel" }')
+Verificar "34a" "GET /ordens-servico/4/pecas (pedido 1 CANCELADO)" 200 (Chamar "Get" "/api/ordens-servico/4/pecas" $tokTec)
 Verificar 35 "PUT /9999/concluir Tecnico"               404 (Chamar "Put" "/api/Solicitacoes/9999/concluir" $tokTec '{ "laudo": "x" }')
+
+Write-Host "== Etapa 8: Pedido de peca e logistica (US-08 / US-23) ==" -ForegroundColor Cyan
+Write-Host "   (banco recriado ao subir: OSM 1 = SSL 10 da carga; pedido 2 e o primeiro desta etapa)" -ForegroundColor DarkGray
+$pedido = '{ "item": "Capacitor 100uF", "quantidade": 2, "justificativa": "Capacitor estufado na placa" }'
+Verificar 36 "POST /ordens-servico/1/pecas sem token"     401 (Chamar "Post" "/api/ordens-servico/1/pecas" $null $pedido)
+Verificar 37 "POST /ordens-servico/1/pecas Admin"         403 (Chamar "Post" "/api/ordens-servico/1/pecas" $tokAdmin $pedido)
+Verificar 38 "POST /ordens-servico/1/pecas quantidade 0"  400 (Chamar "Post" "/api/ordens-servico/1/pecas" $tokTec '{ "item": "Capacitor", "quantidade": 0, "justificativa": "x" }')
+Verificar 39 "POST /ordens-servico/1/pecas Tecnico"       201 (Chamar "Post" "/api/ordens-servico/1/pecas" $tokTec $pedido)
+Verificar 40 "PUT /10/concluir com peca pendente"         400 (Chamar "Put" "/api/Solicitacoes/10/concluir" $tokTec '{ "laudo": "Placa reparada" }')
+Verificar 41 "GET /pedidos-peca Comum"                    403 (Chamar "Get" "/api/pedidos-peca" $tokComum)
+Verificar 42 "GET /pedidos-peca?status=PENDENTES Admin"   200 (Chamar "Get" "/api/pedidos-peca?status=PENDENTES" $tokAdmin)
+Verificar 43 "PUT /pedidos-peca/2/receber (Solicitado)"   400 (Chamar "Put" "/api/pedidos-peca/2/receber" $tokAdmin)
+Verificar 44 "PUT /pedidos-peca/2/encaminhar sem obs"     400 (Chamar "Put" "/api/pedidos-peca/2/encaminhar" $tokAdmin '{ }')
+Verificar 45 "PUT /pedidos-peca/2/encaminhar Admin"       200 (Chamar "Put" "/api/pedidos-peca/2/encaminhar" $tokAdmin '{ "observacaoAlmoxarifado": "Requisicao RM-2026-0042" }')
+Verificar 46 "PUT /pedidos-peca/2/receber Admin"          200 (Chamar "Put" "/api/pedidos-peca/2/receber" $tokAdmin)
+Verificar 47 "PUT /pedidos-peca/2/cancelar (Recebido)"    400 (Chamar "Put" "/api/pedidos-peca/2/cancelar" $tokTec)
+Verificar 48 "GET /ordens-servico/1/pecas Tecnico"        200 (Chamar "Get" "/api/ordens-servico/1/pecas" $tokTec)
+Verificar 49 "PUT /10/concluir (peca recebida)"           200 (Chamar "Put" "/api/Solicitacoes/10/concluir" $tokTec '{ "laudo": "Placa reparada" }')
 
 Write-Host ""
 if ($script:falhas -eq 0) { Write-Host "TODOS OS PASSOS VALIDADOS." -ForegroundColor Green }
