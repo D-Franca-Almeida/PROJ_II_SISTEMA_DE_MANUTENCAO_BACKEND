@@ -73,5 +73,15 @@ public sealed class RoteiroSprints123Tests : IClassFixture<CptmApiFactory>
         TemPropriedade("12", await Passo("12", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/2/aprovar", null)), "message");
         TemPropriedade("13", await Passo("13", HttpStatusCode.OK, comum.PutAsync("/api/Solicitacoes/2/cancelar", null)), "message");
         TemPropriedade("14", await Passo("14", HttpStatusCode.BadRequest, comum.PutAsync("/api/Solicitacoes/1/cancelar", null)), "erro");
+
+        await Passo("15", HttpStatusCode.Unauthorized, anonimo.PutAsync("/api/Solicitacoes/6/receber", null));
+        await Passo("16", HttpStatusCode.Forbidden, comum.PutAsync("/api/Solicitacoes/6/receber", null));
+        TemPropriedade("17", await Passo("17", HttpStatusCode.BadRequest, admin.PutAsync("/api/Solicitacoes/6/receber", null)), "erro");
+        TemPropriedade("18", await Passo("18", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/6/aprovar", null)), "message");
+        var passo19 = await Passo("19", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/6/receber", null));
+        Assert.Equal(StatusSolicitacao.Recebida, passo19!.Value.GetProperty("novoStatus").GetString());
+        Assert.Matches(@"^SSM-\d{4}-\d{6}$", passo19.Value.GetProperty("numeroSsm").GetString());
+        TemPropriedade("20", await Passo("20", HttpStatusCode.BadRequest, comum.PutAsync("/api/Solicitacoes/6/cancelar", null)), "erro");
+        TemPropriedade("21", await Passo("21", HttpStatusCode.BadRequest, admin.PutAsync("/api/Solicitacoes/6/receber", null)), "erro");
     }
 }

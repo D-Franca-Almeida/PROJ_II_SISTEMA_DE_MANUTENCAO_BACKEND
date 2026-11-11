@@ -6,12 +6,13 @@ namespace CPTM.Manutencao.Api.Models
         public const string Solicitada = "SOLICITADA";
         public const string Reenviada = "REENVIADA";
         public const string Aprovada = "APROVADA";
+        public const string Recebida = "RECEBIDA";
         public const string Devolvida = "DEVOLVIDA";
         public const string Cancelada = "CANCELADA";
         public const string EmManutencao = "EM MANUTENCAO";
         public const string Concluida = "CONCLUIDA";
         public const string Expirada = "EXPIRADA";
 
-        public static readonly string[] Todos = { Solicitada, Reenviada, Aprovada, Devolvida, Cancelada, EmManutencao, Concluida, Expirada };
+        public static readonly string[] Todos = { Solicitada, Reenviada, Aprovada, Recebida, Devolvida, Cancelada, EmManutencao, Concluida, Expirada };
     }
 }

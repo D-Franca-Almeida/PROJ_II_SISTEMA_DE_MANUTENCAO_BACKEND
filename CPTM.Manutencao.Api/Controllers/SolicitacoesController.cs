@@ -114,6 +114,10 @@ namespace CPTM.Manutencao.Api.Controllers
             {
                 return NotFound(new { erro = ex.Message });
             }
+            catch (ConflitoDeConcorrenciaException ex)
+            {
+                return Conflict(new { erro = ex.Message });
+            }
             catch (RegraDeNegocioException ex)
             {
                 return BadRequest(new { erro = ex.Message });
@@ -165,6 +169,41 @@ namespace CPTM.Manutencao.Api.Controllers
                 "Solicitação cancelada.");
         }
 
+        // 📦 RECEBER NA OFICINA (Apenas Administrativo) - US-22: APROVADA -> RECEBIDA e gera o número da SSM
+        [HttpPut("{id:int}/receber")]
+        [Authorize(Policy = "RequerPerfilAdmin")]
+        public IActionResult Receber(int id)
+        {
+            var matricula = User.FindFirst("Matricula")?.Value;
+            if (string.IsNullOrEmpty(matricula))
+                return Forbid();
+
+            try
+            {
+                var r = _workflowService.ReceberNaOficina(id, matricula);
+                return Ok(new
+                {
+                    message = $"Equipamento recebido na oficina. SSM {r.NumeroSsm} gerada.",
+                    solicitacaoId = r.SolicitacaoId,
+                    numeroSsm = r.NumeroSsm,
+                    dataRecebimento = r.DataRecebimento,
+                    novoStatus = StatusSolicitacao.Recebida
+                });
+            }
+            catch (SolicitacaoNaoEncontradaException ex)
+            {
+                return NotFound(new { erro = ex.Message });
+            }
+            catch (RegraDeNegocioException ex)
+            {
+                return BadRequest(new { erro = ex.Message });
+            }
+            catch (ConflitoDeConcorrenciaException ex)
+            {
+                return Conflict(new { erro = ex.Message });
+            }
+        }
+
         // 🔧 INICIAR MANUTENÇÃO (Apenas Técnico) - Sprint 3 / US-07
         [HttpPut("{id}/iniciar-manutencao")]
         [Authorize(Policy = "RequerPerfilTecnico")]
@@ -210,6 +249,10 @@ namespace CPTM.Manutencao.Api.Controllers
             catch (RegraDeNegocioException ex)
             {
                 return BadRequest(new { erro = ex.Message });
+            }
+            catch (ConflitoDeConcorrenciaException ex)
+            {
+                return Conflict(new { erro = ex.Message });
             }
             catch (UnauthorizedAccessException)
             {

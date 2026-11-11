@@ -58,6 +58,20 @@ Verificar "8a" "PUT /1/iniciar-manutencao Admin"   403 (Chamar "Put" "/api/Solic
 Verificar 8 "PUT /2/iniciar-manutencao Tecnico (Devolvida)" 400 (Chamar "Put" "/api/Solicitacoes/2/iniciar-manutencao" $tokTec)
 Verificar 9 "PUT /1/iniciar-manutencao Tecnico (Aprovada)"  200 (Chamar "Put" "/api/Solicitacoes/1/iniciar-manutencao" $tokTec)
 
+Write-Host "== Etapa 4: Reenvio e cancelamento (US-06 / US-19) ==" -ForegroundColor Cyan
+Write-Host "   (passos 10-11 de reenvio usam multipart: cobertos em RoteiroSprints123Tests)" -ForegroundColor DarkGray
+Verificar 12 "PUT /2/aprovar Admin (devolvida, sem reenvio)" 400 (Chamar "Put" "/api/Solicitacoes/2/aprovar" $tokAdmin)
+Verificar 14 "PUT /1/cancelar Comum (Em manutencao)"       400 (Chamar "Put" "/api/Solicitacoes/1/cancelar" $tokComum)
+
+Write-Host "== Etapa 5: Recepcao fisica e SSM (US-22) ==" -ForegroundColor Cyan
+Verificar 15 "PUT /6/receber sem token"                401 (Chamar "Put" "/api/Solicitacoes/6/receber" $null)
+Verificar 16 "PUT /6/receber Comum"                    403 (Chamar "Put" "/api/Solicitacoes/6/receber" $tokComum)
+Verificar 17 "PUT /6/receber Admin (Solicitada)"       400 (Chamar "Put" "/api/Solicitacoes/6/receber" $tokAdmin)
+Verificar 18 "PUT /6/aprovar Admin"                    200 (Chamar "Put" "/api/Solicitacoes/6/aprovar" $tokAdmin)
+Verificar 19 "PUT /6/receber Admin (Aprovada)"         200 (Chamar "Put" "/api/Solicitacoes/6/receber" $tokAdmin)
+Verificar 20 "PUT /6/cancelar Comum (Recebida)"        400 (Chamar "Put" "/api/Solicitacoes/6/cancelar" $tokComum)
+Verificar 21 "PUT /6/receber Admin (ja Recebida)"      400 (Chamar "Put" "/api/Solicitacoes/6/receber" $tokAdmin)
+
 Write-Host ""
 if ($script:falhas -eq 0) { Write-Host "TODOS OS PASSOS VALIDADOS." -ForegroundColor Green }
 else { Write-Host "$($script:falhas) passo(s) com falha." -ForegroundColor Red; exit 1 }

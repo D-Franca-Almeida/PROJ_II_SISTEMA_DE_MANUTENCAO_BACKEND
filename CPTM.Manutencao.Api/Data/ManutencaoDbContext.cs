@@ -61,11 +61,15 @@ namespace CPTM.Manutencao.Api.Data
                 entidade.ToTable("SOLICITACOES");
                 entidade.HasKey(s => s.Id);
                 entidade.Property(s => s.Descricao).HasMaxLength(500).IsRequired();
-                entidade.Property(s => s.Status).HasMaxLength(30).IsRequired();
+                entidade.Property(s => s.Status).HasMaxLength(30).IsRequired().IsConcurrencyToken();
                 entidade.Property(s => s.MotivoDevolucao).HasMaxLength(500);
                 entidade.Property(s => s.MatriculaSolicitante).HasMaxLength(30).IsRequired();
                 entidade.Property(s => s.MatriculaTecnico).HasMaxLength(30);
                 entidade.Property(s => s.FotoUrl).HasMaxLength(300);
+                entidade.Property(s => s.NumeroSsm).HasMaxLength(20);
+                entidade.HasIndex(s => s.NumeroSsm).IsUnique();
+                entidade.Property(s => s.DataRecebimento)
+                    .HasConversion(v => v, v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v);
                 entidade.Property(s => s.DataAbertura)
                     .HasConversion(v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
                 entidade.Property(s => s.DataInicioManutencao)

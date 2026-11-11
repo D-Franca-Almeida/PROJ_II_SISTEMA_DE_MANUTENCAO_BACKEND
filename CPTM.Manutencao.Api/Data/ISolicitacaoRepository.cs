@@ -18,6 +18,11 @@ namespace CPTM.Manutencao.Api.Data
         // DEVOLVIDA e APROVADA com a data em que entraram no status atual (último histórico; DataAbertura se não houver)
         List<CandidatoExpiracao> ObterCandidatosExpiracao();
 
+        // Maior NumeroSsm já gravado com o prefixo (ex.: "SSM-2026-"), ou null
+        string? UltimoNumeroSsm(string prefixo);
+
+        // Status é token de concorrência: se outra operação mudou o status entre a leitura e a gravação,
+        // lança ConflitoDeConcorrenciaException e nada é gravado.
         void Salvar(Solicitacao solicitacao, HistoricoStatus historico);
     }
 }
