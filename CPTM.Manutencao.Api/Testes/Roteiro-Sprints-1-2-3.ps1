@@ -82,6 +82,16 @@ Verificar 25 "PUT /6/iniciar-manutencao de novo"        400 (Chamar "Put" "/api/
 Verificar 26 "GET /ordens-servico/minhas Tecnico"       200 (Chamar "Get" "/api/ordens-servico/minhas" $tokTec)
 Verificar 27 "GET /ordens-servico/minhas Admin"         403 (Chamar "Get" "/api/ordens-servico/minhas" $tokAdmin)
 
+Write-Host "== Etapa 7: Encerramento da OSM (US-09) ==" -ForegroundColor Cyan
+Verificar 28 "PUT /1/concluir sem token"                401 (Chamar "Put" "/api/Solicitacoes/1/concluir" $null '{ "laudo": "x" }')
+Verificar 29 "PUT /1/concluir Admin"                    403 (Chamar "Put" "/api/Solicitacoes/1/concluir" $tokAdmin '{ "laudo": "x" }')
+Verificar 30 "PUT /1/concluir Tecnico (sem laudo)"      400 (Chamar "Put" "/api/Solicitacoes/1/concluir" $tokTec '{ "laudo": "  " }')
+Verificar 31 "PUT /1/concluir Tecnico (com laudo)"      200 (Chamar "Put" "/api/Solicitacoes/1/concluir" $tokTec '{ "laudo": "Fonte substituida e testada" }')
+Verificar 32 "PUT /1/concluir de novo"                  400 (Chamar "Put" "/api/Solicitacoes/1/concluir" $tokTec '{ "laudo": "x" }')
+Verificar 33 "PUT /6/nao-executar Tecnico (sem motivo)" 400 (Chamar "Put" "/api/Solicitacoes/6/nao-executar" $tokTec '{ }')
+Verificar 34 "PUT /6/nao-executar Tecnico (com motivo)" 200 (Chamar "Put" "/api/Solicitacoes/6/nao-executar" $tokTec '{ "motivo": "Equipamento sem conserto viavel" }')
+Verificar 35 "PUT /9999/concluir Tecnico"               404 (Chamar "Put" "/api/Solicitacoes/9999/concluir" $tokTec '{ "laudo": "x" }')
+
 Write-Host ""
 if ($script:falhas -eq 0) { Write-Host "TODOS OS PASSOS VALIDADOS." -ForegroundColor Green }
 else { Write-Host "$($script:falhas) passo(s) com falha." -ForegroundColor Red; exit 1 }

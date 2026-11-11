@@ -1,6 +1,6 @@
 namespace CPTM.Manutencao.Api.Models
 {
-    // OSM (US-07): aberta quando o técnico assume uma SSL RECEBIDA. Conclusão/laudo e não execução ficam para a US-09.
+    // OSM (US-07): aberta quando o técnico assume uma SSL RECEBIDA. Encerrada na US-09 (laudo ou motivo da não execução).
     public class OrdemServico
     {
         public int Id { get; set; }
@@ -26,4 +26,14 @@ namespace CPTM.Manutencao.Api.Models
         DateTime? DataConclusao,
         string? Laudo,
         string? MotivoNaoExecucao);
+
+    public class ConclusaoOsmDto
+    {
+        public string? Laudo { get; set; }
+    }
+
+    public class NaoExecucaoOsmDto
+    {
+        public string? Motivo { get; set; }
+    }
 }

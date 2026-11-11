@@ -98,5 +98,23 @@ public sealed class RoteiroSprints123Tests : IClassFixture<CptmApiFactory>
         Assert.Contains(1, solicitacoesDasOsms);
         Assert.Contains(6, solicitacoesDasOsms);
         await Passo("27", HttpStatusCode.Forbidden, admin.GetAsync("/api/ordens-servico/minhas"));
+
+        await Passo("28", HttpStatusCode.Unauthorized, anonimo.PutAsync("/api/Solicitacoes/1/concluir", CptmApiFactory.Json("{ \"laudo\": \"x\" }")));
+        await Passo("29", HttpStatusCode.Forbidden, admin.PutAsync("/api/Solicitacoes/1/concluir", CptmApiFactory.Json("{ \"laudo\": \"x\" }")));
+        TemPropriedade("30", await Passo("30", HttpStatusCode.BadRequest,
+            tecnico.PutAsync("/api/Solicitacoes/1/concluir", CptmApiFactory.Json("{ \"laudo\": \"  \" }"))), "erro");
+        var passo31 = await Passo("31", HttpStatusCode.OK,
+            tecnico.PutAsync("/api/Solicitacoes/1/concluir", CptmApiFactory.Json("{ \"laudo\": \"Fonte substituida e testada\" }")));
+        Assert.Equal(StatusSolicitacao.Concluida, passo31!.Value.GetProperty("novoStatus").GetString());
+        TemPropriedade("31", passo31, "dataConclusao");
+        TemPropriedade("32", await Passo("32", HttpStatusCode.BadRequest,
+            tecnico.PutAsync("/api/Solicitacoes/1/concluir", CptmApiFactory.Json("{ \"laudo\": \"x\" }"))), "erro");
+        TemPropriedade("33", await Passo("33", HttpStatusCode.BadRequest,
+            tecnico.PutAsync("/api/Solicitacoes/6/nao-executar", CptmApiFactory.Json("{ }"))), "erro");
+        var passo34 = await Passo("34", HttpStatusCode.OK,
+            tecnico.PutAsync("/api/Solicitacoes/6/nao-executar", CptmApiFactory.Json("{ \"motivo\": \"Equipamento sem conserto viavel\" }")));
+        Assert.Equal(StatusSolicitacao.NaoExecutada, passo34!.Value.GetProperty("novoStatus").GetString());
+        TemPropriedade("35", await Passo("35", HttpStatusCode.NotFound,
+            tecnico.PutAsync("/api/Solicitacoes/9999/concluir", CptmApiFactory.Json("{ \"laudo\": \"x\" }"))), "erro");
     }
 }
