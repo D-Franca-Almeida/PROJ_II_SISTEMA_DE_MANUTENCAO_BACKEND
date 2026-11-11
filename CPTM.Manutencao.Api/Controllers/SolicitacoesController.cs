@@ -33,6 +33,11 @@ namespace CPTM.Manutencao.Api.Controllers
             }
         }
 
+        // FILA DO TÉCNICO (Apenas Técnico) - US-07: SSLs RECEBIDAS na oficina, disponíveis para assumir
+        [HttpGet("recebidas")]
+        [Authorize(Policy = "RequerPerfilTecnico")]
+        public IActionResult Recebidas() => Ok(_solicitacaoService.ListarRecebidas());
+
         // MINHAS SSLs (qualquer perfil autenticado; apenas as do próprio solicitante) - US-18
         [HttpGet("minhas")]
         [Authorize]
@@ -204,7 +209,7 @@ namespace CPTM.Manutencao.Api.Controllers
             }
         }
 
-        // 🔧 INICIAR MANUTENÇÃO (Apenas Técnico) - Sprint 3 / US-07
+        // 🔧 INICIAR MANUTENÇÃO (Apenas Técnico) - US-07: assume uma SSL RECEBIDA e abre a OSM
         [HttpPut("{id}/iniciar-manutencao")]
         [Authorize(Policy = "RequerPerfilTecnico")]
         public IActionResult IniciarManutencao(int id)
@@ -215,12 +220,15 @@ namespace CPTM.Manutencao.Api.Controllers
 
             try
             {
-                _workflowService.IniciarManutencao(id, matricula);
+                var ordem = _workflowService.IniciarManutencao(id, matricula);
                 return Ok(new
                 {
                     mensagem = "Manutenção iniciada com sucesso. Ordem de Serviço (OSM) aberta.",
                     solicitacaoId = id,
-                    tecnicoResponsavel = matricula,
+                    ordemServicoId = ordem.Id,
+                    numeroSsm = ordem.Solicitacao?.NumeroSsm,
+                    tecnicoResponsavel = ordem.MatriculaTecnico,
+                    dataAbertura = ordem.DataAbertura,
                     novoStatus = StatusSolicitacao.EmManutencao
                 });
             }
@@ -231,6 +239,10 @@ namespace CPTM.Manutencao.Api.Controllers
             catch (RegraDeNegocioException ex)
             {
                 return BadRequest(new { erro = ex.Message });
+            }
+            catch (ConflitoDeConcorrenciaException ex)
+            {
+                return Conflict(new { erro = ex.Message });
             }
         }
 

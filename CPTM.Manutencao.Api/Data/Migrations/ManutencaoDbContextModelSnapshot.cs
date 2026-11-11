@@ -401,6 +401,62 @@ namespace CPTM.Manutencao.Api.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("CPTM.Manutencao.Api.Models.OrdemServico", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("DataAbertura")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DataConclusao")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Laudo")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MatriculaTecnico")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MotivoNaoExecucao")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SolicitacaoId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MatriculaTecnico");
+
+                    b.HasIndex("SolicitacaoId")
+                        .IsUnique();
+
+                    b.ToTable("ORDEM_SERVICO", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            DataAbertura = new DateTime(2026, 11, 1, 12, 2, 0, 0, DateTimeKind.Utc),
+                            MatriculaTecnico = "tec123",
+                            SolicitacaoId = 10
+                        },
+                        new
+                        {
+                            Id = 2,
+                            DataAbertura = new DateTime(2026, 11, 1, 12, 2, 0, 0, DateTimeKind.Utc),
+                            DataConclusao = new DateTime(2026, 11, 1, 12, 3, 0, 0, DateTimeKind.Utc),
+                            Laudo = "Piso refixado (carga inicial).",
+                            MatriculaTecnico = "tec123",
+                            SolicitacaoId = 11
+                        });
+                });
+
             modelBuilder.Entity("CPTM.Manutencao.Api.Models.Solicitacao", b =>
                 {
                     b.Property<int>("Id")
@@ -550,10 +606,12 @@ namespace CPTM.Manutencao.Api.Data.Migrations
                         {
                             Id = 10,
                             DataAbertura = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
+                            DataInicioManutencao = new DateTime(2026, 11, 1, 12, 2, 0, 0, DateTimeKind.Utc),
                             DataRecebimento = new DateTime(2026, 11, 1, 12, 1, 0, 0, DateTimeKind.Utc),
                             Descricao = "Bebedouro sem pressão",
                             EquipamentoId = 14,
                             MatriculaSolicitante = "comum123",
+                            MatriculaTecnico = "tec123",
                             NumeroSsm = "SSM-2026-000001",
                             Status = "EM MANUTENCAO"
                         },
@@ -561,10 +619,12 @@ namespace CPTM.Manutencao.Api.Data.Migrations
                         {
                             Id = 11,
                             DataAbertura = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
+                            DataInicioManutencao = new DateTime(2026, 11, 1, 12, 2, 0, 0, DateTimeKind.Utc),
                             DataRecebimento = new DateTime(2026, 11, 1, 12, 1, 0, 0, DateTimeKind.Utc),
                             Descricao = "Piso solto na estação",
                             EquipamentoId = 9,
                             MatriculaSolicitante = "comum123",
+                            MatriculaTecnico = "tec123",
                             NumeroSsm = "SSM-2026-000002",
                             Status = "CONCLUIDA"
                         },
@@ -650,6 +710,17 @@ namespace CPTM.Manutencao.Api.Data.Migrations
                     b.Navigation("Solicitacao");
                 });
 
+            modelBuilder.Entity("CPTM.Manutencao.Api.Models.OrdemServico", b =>
+                {
+                    b.HasOne("CPTM.Manutencao.Api.Models.Solicitacao", "Solicitacao")
+                        .WithOne("OrdemServico")
+                        .HasForeignKey("CPTM.Manutencao.Api.Models.OrdemServico", "SolicitacaoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Solicitacao");
+                });
+
             modelBuilder.Entity("CPTM.Manutencao.Api.Models.Solicitacao", b =>
                 {
                     b.HasOne("CPTM.Manutencao.Api.Models.Equipamento", "Equipamento")
@@ -658,6 +729,11 @@ namespace CPTM.Manutencao.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Equipamento");
+                });
+
+            modelBuilder.Entity("CPTM.Manutencao.Api.Models.Solicitacao", b =>
+                {
+                    b.Navigation("OrdemServico");
                 });
 #pragma warning restore 612, 618
         }

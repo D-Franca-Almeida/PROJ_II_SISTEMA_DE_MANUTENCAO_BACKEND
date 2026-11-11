@@ -247,6 +247,7 @@ public sealed class RecebimentoSsmTests : IDisposable
         public Solicitacao? ObterPorId(int id) => _real.ObterPorId(id);
         public List<SolicitacaoDto> Listar(string? status, string? matriculaSolicitante) => _real.Listar(status, matriculaSolicitante);
         public SolicitacaoDetalheDto? ObterDetalhe(int id) => _real.ObterDetalhe(id);
+        public List<SolicitacaoDto> ListarRecebidas() => _real.ListarRecebidas();
         public List<CandidatoExpiracao> ObterCandidatosExpiracao() => _real.ObterCandidatosExpiracao();
         public void Salvar(Solicitacao solicitacao, HistoricoStatus historico) => _real.Salvar(solicitacao, historico);
     }

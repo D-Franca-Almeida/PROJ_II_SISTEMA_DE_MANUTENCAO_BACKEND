@@ -51,6 +51,7 @@ public sealed class SolicitacaoServiceTests : IDisposable
         public SolicitacaoDetalheDto? ObterDetalhe(int id) => null;
         public List<CandidatoExpiracao> ObterCandidatosExpiracao() => new();
         public string? UltimoNumeroSsm(string prefixo) => null;
+        public List<SolicitacaoDto> ListarRecebidas() => new();
         public void Salvar(Solicitacao solicitacao, HistoricoStatus historico) => throw new InvalidOperationException("falha simulada");
     }
 

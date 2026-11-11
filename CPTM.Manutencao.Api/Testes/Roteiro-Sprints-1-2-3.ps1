@@ -1,4 +1,4 @@
-# Roteiro automatizado - Sprints 1, 2 e 3 (JWT/RBAC, Triagem, Recepcao na Oficina)
+# Roteiro automatizado - Sprints 1, 2 e 3 (JWT/RBAC, Triagem, Recepcao na Oficina, OSM)
 # Compativel com Windows PowerShell 5.1 e PowerShell 7+.
 # Uso: com a API rodando (dotnet run), execute na pasta CPTM.Manutencao.Api:
 #   powershell -ExecutionPolicy Bypass -File .\Testes\Roteiro-Sprints-1-2-3.ps1
@@ -56,7 +56,9 @@ Verificar "7b" "PUT /3/aprovar Admin (ja cancelada)" 400 (Chamar "Put" "/api/Sol
 Write-Host "== Etapa 3: Oficina (Sprint 3) ==" -ForegroundColor Cyan
 Verificar "8a" "PUT /1/iniciar-manutencao Admin"   403 (Chamar "Put" "/api/Solicitacoes/1/iniciar-manutencao" $tokAdmin)
 Verificar 8 "PUT /2/iniciar-manutencao Tecnico (Devolvida)" 400 (Chamar "Put" "/api/Solicitacoes/2/iniciar-manutencao" $tokTec)
-Verificar 9 "PUT /1/iniciar-manutencao Tecnico (Aprovada)"  200 (Chamar "Put" "/api/Solicitacoes/1/iniciar-manutencao" $tokTec)
+Verificar "9a" "PUT /1/iniciar-manutencao Tecnico (Aprovada, sem recepcao)" 400 (Chamar "Put" "/api/Solicitacoes/1/iniciar-manutencao" $tokTec)
+Verificar "9b" "PUT /1/receber Admin (Aprovada)"                           200 (Chamar "Put" "/api/Solicitacoes/1/receber" $tokAdmin)
+Verificar 9 "PUT /1/iniciar-manutencao Tecnico (Recebida)"                 200 (Chamar "Put" "/api/Solicitacoes/1/iniciar-manutencao" $tokTec)
 
 Write-Host "== Etapa 4: Reenvio e cancelamento (US-06 / US-19) ==" -ForegroundColor Cyan
 Write-Host "   (passos 10-11 de reenvio usam multipart: cobertos em RoteiroSprints123Tests)" -ForegroundColor DarkGray
@@ -71,6 +73,14 @@ Verificar 18 "PUT /6/aprovar Admin"                    200 (Chamar "Put" "/api/S
 Verificar 19 "PUT /6/receber Admin (Aprovada)"         200 (Chamar "Put" "/api/Solicitacoes/6/receber" $tokAdmin)
 Verificar 20 "PUT /6/cancelar Comum (Recebida)"        400 (Chamar "Put" "/api/Solicitacoes/6/cancelar" $tokComum)
 Verificar 21 "PUT /6/receber Admin (ja Recebida)"      400 (Chamar "Put" "/api/Solicitacoes/6/receber" $tokAdmin)
+
+Write-Host "== Etapa 6: Fila do tecnico e OSM (US-07) ==" -ForegroundColor Cyan
+Verificar 22 "GET /recebidas Comum"                     403 (Chamar "Get" "/api/Solicitacoes/recebidas" $tokComum)
+Verificar 23 "GET /recebidas Tecnico"                   200 (Chamar "Get" "/api/Solicitacoes/recebidas" $tokTec)
+Verificar 24 "PUT /6/iniciar-manutencao Tecnico"        200 (Chamar "Put" "/api/Solicitacoes/6/iniciar-manutencao" $tokTec)
+Verificar 25 "PUT /6/iniciar-manutencao de novo"        400 (Chamar "Put" "/api/Solicitacoes/6/iniciar-manutencao" $tokTec)
+Verificar 26 "GET /ordens-servico/minhas Tecnico"       200 (Chamar "Get" "/api/ordens-servico/minhas" $tokTec)
+Verificar 27 "GET /ordens-servico/minhas Admin"         403 (Chamar "Get" "/api/ordens-servico/minhas" $tokAdmin)
 
 Write-Host ""
 if ($script:falhas -eq 0) { Write-Host "TODOS OS PASSOS VALIDADOS." -ForegroundColor Green }

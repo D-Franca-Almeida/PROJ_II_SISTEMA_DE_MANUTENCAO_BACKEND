@@ -108,6 +108,19 @@ namespace CPTM.Manutencao.Api.Data
             return linhas.ToArray();
         }
 
+        // US-07: SSLs da carga que já passaram pela oficina (10 EM MANUTENCAO, 11 CONCLUIDA) têm OSM do técnico tec123
+        private static readonly DateTime DataOsmCarga = new(2026, 11, 1, 12, 2, 0, DateTimeKind.Utc);
+
+        public static OrdemServico[] OrdensServico() => new[]
+        {
+            new OrdemServico { Id = 1, SolicitacaoId = 10, MatriculaTecnico = "tec123", DataAbertura = DataOsmCarga },
+            new OrdemServico
+            {
+                Id = 2, SolicitacaoId = 11, MatriculaTecnico = "tec123", DataAbertura = DataOsmCarga,
+                DataConclusao = DataOsmCarga.AddMinutes(1), Laudo = "Piso refixado (carga inicial)."
+            }
+        };
+
         private static Solicitacao Nova(int id, string descricao, string status, int equipamentoId, string matriculaSolicitante = "comum123") =>
             new()
             {
@@ -118,7 +131,9 @@ namespace CPTM.Manutencao.Api.Data
                 DataAbertura = new DateTime(2026, 11, 1, 12, 0, 0, DateTimeKind.Utc),
                 MatriculaSolicitante = matriculaSolicitante,
                 NumeroSsm = SsmDaCarga.GetValueOrDefault(id),
-                DataRecebimento = SsmDaCarga.ContainsKey(id) ? new DateTime(2026, 11, 1, 12, 1, 0, DateTimeKind.Utc) : null
+                DataRecebimento = SsmDaCarga.ContainsKey(id) ? new DateTime(2026, 11, 1, 12, 1, 0, DateTimeKind.Utc) : null,
+                MatriculaTecnico = SsmDaCarga.ContainsKey(id) ? "tec123" : null,
+                DataInicioManutencao = SsmDaCarga.ContainsKey(id) ? DataOsmCarga : null
             };
     }
 }

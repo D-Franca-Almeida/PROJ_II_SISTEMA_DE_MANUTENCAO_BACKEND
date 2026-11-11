@@ -57,5 +57,6 @@ namespace CPTM.Manutencao.Api.Models
         List<HistoricoStatusDto> Historico,
         int? DiasParaExpirar = null,
         string? NumeroSsm = null,
-        DateTime? DataRecebimento = null);
+        DateTime? DataRecebimento = null,
+        int? OrdemServicoId = null);
 }

@@ -16,5 +16,6 @@ namespace CPTM.Manutencao.Api.Models
         public DateTime? DataRecebimento { get; set; }
         public int? EquipamentoId { get; set; }
         public Equipamento? Equipamento { get; set; }
+        public OrdemServico? OrdemServico { get; set; }
     }
 }
