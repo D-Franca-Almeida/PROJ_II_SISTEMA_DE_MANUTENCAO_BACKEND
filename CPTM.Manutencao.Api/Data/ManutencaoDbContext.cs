@@ -10,6 +10,7 @@ namespace CPTM.Manutencao.Api.Data
         public ManutencaoDbContext(DbContextOptions<ManutencaoDbContext> options) : base(options) { }
 
         public DbSet<Solicitacao> Solicitacoes => Set<Solicitacao>();
+        public DbSet<HistoricoStatus> HistoricoStatus => Set<HistoricoStatus>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -26,6 +27,23 @@ namespace CPTM.Manutencao.Api.Data
                 entidade.HasIndex(s => s.MatriculaSolicitante);
 
                 entidade.HasData(DadosIniciais.Solicitacoes());
+            });
+
+            modelBuilder.Entity<HistoricoStatus>(entidade =>
+            {
+                entidade.ToTable("HISTORICO_STATUS");
+                entidade.HasKey(h => h.Id);
+                entidade.Property(h => h.StatusAnterior).HasMaxLength(30);
+                entidade.Property(h => h.StatusNovo).HasMaxLength(30).IsRequired();
+                entidade.Property(h => h.Matricula).HasMaxLength(30).IsRequired();
+                entidade.Property(h => h.Observacao).HasMaxLength(500);
+                entidade.HasOne(h => h.Solicitacao)
+                    .WithMany()
+                    .HasForeignKey(h => h.SolicitacaoId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entidade.HasIndex(h => new { h.SolicitacaoId, h.Data });
+
+                entidade.HasData(DadosIniciais.Historico());
             });
         }
     }

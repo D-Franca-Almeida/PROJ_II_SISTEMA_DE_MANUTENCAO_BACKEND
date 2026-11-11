@@ -24,6 +24,42 @@ namespace CPTM.Manutencao.Api.Data
             Nova(12, "Escada rolante com ruído (corrigida)", StatusSolicitacao.Reenviada)
         };
 
+        // Histórico coerente com a massa: abertura (nulo -> SOLICITADA) de todas e, para as que já
+        // estão em outro status, uma linha de carga inicial até o status atual.
+        public static HistoricoStatus[] Historico()
+        {
+            var dataCarga = new DateTime(2026, 11, 1, 12, 0, 0, DateTimeKind.Utc);
+            var linhas = new List<HistoricoStatus>();
+            var proximoId = 1;
+
+            foreach (var s in Solicitacoes())
+            {
+                linhas.Add(new HistoricoStatus
+                {
+                    Id = proximoId++,
+                    SolicitacaoId = s.Id,
+                    StatusAnterior = null,
+                    StatusNovo = StatusSolicitacao.Solicitada,
+                    Matricula = s.MatriculaSolicitante,
+                    Data = dataCarga
+                });
+
+                if (s.Status != StatusSolicitacao.Solicitada)
+                    linhas.Add(new HistoricoStatus
+                    {
+                        Id = proximoId++,
+                        SolicitacaoId = s.Id,
+                        StatusAnterior = StatusSolicitacao.Solicitada,
+                        StatusNovo = s.Status,
+                        Matricula = HistoricoStatus.MatriculaSistema,
+                        Data = dataCarga.AddMinutes(1),
+                        Observacao = "Carga inicial"
+                    });
+            }
+
+            return linhas.ToArray();
+        }
+
         private static Solicitacao Nova(int id, string descricao, string status, string matriculaSolicitante = "comum123") =>
             new()
             {
