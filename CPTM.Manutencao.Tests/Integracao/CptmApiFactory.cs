@@ -15,12 +15,14 @@ public sealed class CptmApiFactory : WebApplicationFactory<Program>
 
     public string PastaUploads { get; } = Path.Combine(Path.GetTempPath(), $"cptm-uploads-{Guid.NewGuid():N}");
 
+    private string StringDeConexao => $"Data Source={_arquivoBanco}";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
         builder.UseSetting("Database:Provider", "Sqlite");
         builder.UseSetting("Database:RecriarAoIniciar", "true");
-        builder.UseSetting("ConnectionStrings:Sqlite", $"Data Source={_arquivoBanco}");
+        builder.UseSetting("ConnectionStrings:Sqlite", StringDeConexao);
         builder.UseSetting("Uploads:Raiz", PastaUploads);
         builder.UseSetting("Prazos:ExecucaoAutomatica", "false");
     }
@@ -51,8 +53,11 @@ public sealed class CptmApiFactory : WebApplicationFactory<Program>
     {
         base.Dispose(disposing);
         if (!disposing) return;
-        SqliteConnection.ClearAllPools();
-        foreach (var arquivo in new[] { _arquivoBanco, _arquivoBanco + "-wal", _arquivoBanco + "-shm" })
+        // Só o pool deste banco: ClearAllPools é global e, com as classes rodando em paralelo, descartava
+        // conexões em uso por outras APIs de teste (ObjectDisposedException 'SQLitePCL.sqlite3' -> 500 aleatório).
+        using (var conexao = new SqliteConnection(StringDeConexao))
+            SqliteConnection.ClearPool(conexao);
+        foreach (var arquivo in new[] { _arquivoBanco, _arquivoBanco + "-wal", _arquivoBanco + "-shm", _arquivoBanco + "-journal" })
             try { File.Delete(arquivo); } catch (IOException) { }
         try { Directory.Delete(PastaUploads, true); } catch (IOException) { }
     }
