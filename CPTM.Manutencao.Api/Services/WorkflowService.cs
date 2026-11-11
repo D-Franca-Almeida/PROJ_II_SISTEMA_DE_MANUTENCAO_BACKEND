@@ -34,10 +34,12 @@ namespace CPTM.Manutencao.Api.Services
     public class WorkflowService : IWorkflowService
     {
         private readonly ISolicitacaoRepository _repositorio;
+        private readonly TimeProvider _relogio;
 
-        public WorkflowService(ISolicitacaoRepository repositorio)
+        public WorkflowService(ISolicitacaoRepository repositorio, TimeProvider? relogio = null)
         {
             _repositorio = repositorio;
+            _relogio = relogio ?? TimeProvider.System;
         }
 
         public void AprovarTriagem(int id, string matriculaLogada)
@@ -93,7 +95,7 @@ namespace CPTM.Manutencao.Api.Services
                 throw new RegraDeNegocioException("A identificação do técnico responsável é obrigatória.");
 
             solicitacao.MatriculaTecnico = matriculaTecnico.Trim();
-            solicitacao.DataInicioManutencao = DateTime.UtcNow;
+            solicitacao.DataInicioManutencao = _relogio.GetUtcNow().UtcDateTime;
             Transicionar(solicitacao, StatusSolicitacao.EmManutencao, solicitacao.MatriculaTecnico);
         }
 
@@ -103,13 +105,15 @@ namespace CPTM.Manutencao.Api.Services
                 throw new RegraDeNegocioException("O novo status é obrigatório.");
             if (string.IsNullOrWhiteSpace(matricula))
                 throw new RegraDeNegocioException("A matrícula responsável pela transição é obrigatória.");
+            if (solicitacao.Id != 0 && solicitacao.Status == novoStatus)
+                throw new RegraDeNegocioException($"A solicitação já está com status {novoStatus}.");
 
             var historico = new HistoricoStatus
             {
                 StatusAnterior = solicitacao.Id == 0 ? null : solicitacao.Status,
                 StatusNovo = novoStatus,
                 Matricula = matricula.Trim(),
-                Data = DateTime.UtcNow,
+                Data = _relogio.GetUtcNow().UtcDateTime,
                 Observacao = observacao
             };
 

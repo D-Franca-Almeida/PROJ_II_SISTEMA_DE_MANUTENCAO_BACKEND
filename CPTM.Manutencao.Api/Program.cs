@@ -33,6 +33,13 @@ builder.Services.AddScoped<IWorkflowService, WorkflowService>();
 builder.Services.AddScoped<ICatalogoRepository, CatalogoRepository>();
 builder.Services.AddScoped<ISolicitacaoService, SolicitacaoService>();
 
+// Expiração (US-20): prazo e agendamento em Prazos:*; o relógio é injetável (TimeProvider) para os testes.
+var prazos = builder.Configuration.GetSection("Prazos").Get<PrazosOptions>() ?? new PrazosOptions();
+builder.Services.AddSingleton(prazos);
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<IExpiracaoService, ExpiracaoService>();
+builder.Services.AddHostedService<ExpiracaoBackgroundService>();
+
 // Fotos das SSLs ficam em disco (nunca no banco). A raiz vem de Uploads:Raiz (padrão: wwwroot/uploads).
 var raizUploads = builder.Configuration["Uploads:Raiz"];
 if (string.IsNullOrWhiteSpace(raizUploads))

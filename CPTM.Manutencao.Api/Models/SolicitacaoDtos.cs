@@ -35,7 +35,8 @@ namespace CPTM.Manutencao.Api.Models
         string MatriculaSolicitante,
         EquipamentoDto? Equipamento,
         EstacaoDto? Estacao,
-        string? MotivoDevolucao = null);
+        string? MotivoDevolucao = null,
+        int? DiasParaExpirar = null);
 
     public record HistoricoStatusDto(string? StatusAnterior, string StatusNovo, string Matricula, DateTime Data, string? Observacao);
 
@@ -51,5 +52,6 @@ namespace CPTM.Manutencao.Api.Models
         string? MotivoDevolucao,
         string? MatriculaTecnico,
         DateTime? DataInicioManutencao,
-        List<HistoricoStatusDto> Historico);
+        List<HistoricoStatusDto> Historico,
+        int? DiasParaExpirar = null);
 }

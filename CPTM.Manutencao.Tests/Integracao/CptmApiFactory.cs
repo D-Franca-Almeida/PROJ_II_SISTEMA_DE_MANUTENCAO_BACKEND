@@ -22,6 +22,7 @@ public sealed class CptmApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Database:RecriarAoIniciar", "true");
         builder.UseSetting("ConnectionStrings:Sqlite", $"Data Source={_arquivoBanco}");
         builder.UseSetting("Uploads:Raiz", PastaUploads);
+        builder.UseSetting("Prazos:ExecucaoAutomatica", "false");
     }
 
     public async Task<string> LoginAsync(string matricula, string senha = "senha")
