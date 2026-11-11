@@ -1,6 +1,5 @@
 using CPTM.Manutencao.Api.Data;
 using CPTM.Manutencao.Api.Models;
-using Microsoft.EntityFrameworkCore;
 
 namespace CPTM.Manutencao.Api.Services
 {
@@ -20,10 +19,15 @@ namespace CPTM.Manutencao.Api.Services
     // 1. A Interface (O Contrato)
     public interface IWorkflowService
     {
-        void AprovarTriagem(int id);
-        void DevolverTriagem(int id, string motivo);
+        void AprovarTriagem(int id, string matriculaLogada);
+        void DevolverTriagem(int id, string motivo, string matriculaLogada);
         void CancelarTriagem(int id, string matriculaLogada, string perfilLogado);
         void IniciarManutencao(int id, string matriculaTecnico);
+
+        // US-16: ponto único de mudança de status. Grava exatamente 1 linha em HistoricoStatus.
+        // Solicitação nova (Id = 0) registra a abertura com StatusAnterior nulo.
+        // Transições automáticas usam HistoricoStatus.MatriculaSistema.
+        void Transicionar(Solicitacao solicitacao, string novoStatus, string matricula, string? observacao = null);
     }
 
     // 2. A Implementação: motor de triagem (máquina de estados)
@@ -36,24 +40,22 @@ namespace CPTM.Manutencao.Api.Services
             _repositorio = repositorio;
         }
 
-        public void AprovarTriagem(int id)
+        public void AprovarTriagem(int id, string matriculaLogada)
         {
             var solicitacao = ObterParaTriagem(id, "aprovar");
 
-            solicitacao.Status = StatusSolicitacao.Aprovada;
-            _repositorio.Salvar(solicitacao);
+            Transicionar(solicitacao, StatusSolicitacao.Aprovada, matriculaLogada);
         }
 
-        public void DevolverTriagem(int id, string motivo)
+        public void DevolverTriagem(int id, string motivo, string matriculaLogada)
         {
             var solicitacao = ObterParaTriagem(id, "devolver");
 
             if (string.IsNullOrWhiteSpace(motivo))
                 throw new RegraDeNegocioException("O motivo da devolução é obrigatório.");
 
-            solicitacao.Status = StatusSolicitacao.Devolvida;
             solicitacao.MotivoDevolucao = motivo.Trim();
-            _repositorio.Salvar(solicitacao);
+            Transicionar(solicitacao, StatusSolicitacao.Devolvida, matriculaLogada, solicitacao.MotivoDevolucao);
         }
 
         public void CancelarTriagem(int id, string matriculaLogada, string perfilLogado)
@@ -73,8 +75,7 @@ namespace CPTM.Manutencao.Api.Services
                 throw new RegraDeNegocioException(
                     $"Não é possível cancelar uma solicitação com status {solicitacao.Status}.");
 
-            solicitacao.Status = StatusSolicitacao.Cancelada;
-            _repositorio.Salvar(solicitacao);
+            Transicionar(solicitacao, StatusSolicitacao.Cancelada, matriculaLogada);
         }
 
         // Sprint 3 (US-07): Recepção na oficina. APROVADA -> EM MANUTENCAO
@@ -90,10 +91,29 @@ namespace CPTM.Manutencao.Api.Services
             if (string.IsNullOrWhiteSpace(matriculaTecnico))
                 throw new RegraDeNegocioException("A identificação do técnico responsável é obrigatória.");
 
-            solicitacao.Status = StatusSolicitacao.EmManutencao;
             solicitacao.MatriculaTecnico = matriculaTecnico.Trim();
             solicitacao.DataInicioManutencao = DateTime.UtcNow;
-            _repositorio.Salvar(solicitacao);
+            Transicionar(solicitacao, StatusSolicitacao.EmManutencao, solicitacao.MatriculaTecnico);
+        }
+
+        public void Transicionar(Solicitacao solicitacao, string novoStatus, string matricula, string? observacao = null)
+        {
+            if (string.IsNullOrWhiteSpace(novoStatus))
+                throw new RegraDeNegocioException("O novo status é obrigatório.");
+            if (string.IsNullOrWhiteSpace(matricula))
+                throw new RegraDeNegocioException("A matrícula responsável pela transição é obrigatória.");
+
+            var historico = new HistoricoStatus
+            {
+                StatusAnterior = solicitacao.Id == 0 ? null : solicitacao.Status,
+                StatusNovo = novoStatus,
+                Matricula = matricula.Trim(),
+                Data = DateTime.UtcNow,
+                Observacao = observacao
+            };
+
+            solicitacao.Status = novoStatus;
+            _repositorio.Salvar(solicitacao, historico);
         }
 
         // Busca a solicitação e garante que ela está apta para triagem:

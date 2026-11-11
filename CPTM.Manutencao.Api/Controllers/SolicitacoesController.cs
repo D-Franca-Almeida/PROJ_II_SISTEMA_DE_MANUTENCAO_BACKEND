@@ -19,16 +19,28 @@ namespace CPTM.Manutencao.Api.Controllers
         // 🟢 APROVAR (Apenas Administrativo)
         [HttpPut("{id}/aprovar")]
         [Authorize(Policy = "RequerPerfilAdmin")]
-        public IActionResult Aprovar(int id) =>
-            Executar(() => _workflowService.AprovarTriagem(id),
+        public IActionResult Aprovar(int id)
+        {
+            var matricula = User.FindFirst("Matricula")?.Value;
+            if (string.IsNullOrEmpty(matricula))
+                return Forbid();
+
+            return Executar(() => _workflowService.AprovarTriagem(id, matricula),
                 "Solicitação aprovada com sucesso e pronta para a oficina.");
+        }
 
         // 🔴 DEVOLVER (Apenas Administrativo)
         [HttpPut("{id}/devolver")]
         [Authorize(Policy = "RequerPerfilAdmin")]
-        public IActionResult Devolver(int id, [FromBody] DevolucaoDto dto) =>
-            Executar(() => _workflowService.DevolverTriagem(id, dto?.Motivo ?? string.Empty),
+        public IActionResult Devolver(int id, [FromBody] DevolucaoDto dto)
+        {
+            var matricula = User.FindFirst("Matricula")?.Value;
+            if (string.IsNullOrEmpty(matricula))
+                return Forbid();
+
+            return Executar(() => _workflowService.DevolverTriagem(id, dto?.Motivo ?? string.Empty, matricula),
                 "Solicitação devolvida para correção do solicitante.");
+        }
 
         // ⚫ CANCELAR (Administrativo: qualquer uma | Comum: apenas a própria | Técnico: proibido)
         [HttpPut("{id}/cancelar")]

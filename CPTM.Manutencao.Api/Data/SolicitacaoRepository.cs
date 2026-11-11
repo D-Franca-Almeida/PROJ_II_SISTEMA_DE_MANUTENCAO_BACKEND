@@ -15,7 +15,7 @@ namespace CPTM.Manutencao.Api.Data
 
         public Solicitacao? ObterPorId(int id) => _contexto.Solicitacoes.Find(id);
 
-        public void Salvar(Solicitacao solicitacao)
+        public void Salvar(Solicitacao solicitacao, HistoricoStatus historico)
         {
             if (_contexto.Entry(solicitacao).State == EntityState.Detached)
             {
@@ -24,6 +24,9 @@ namespace CPTM.Manutencao.Api.Data
                 else
                     _contexto.Solicitacoes.Update(solicitacao);
             }
+
+            historico.Solicitacao = solicitacao;
+            _contexto.HistoricoStatus.Add(historico);
 
             _contexto.SaveChanges();
         }

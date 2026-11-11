@@ -17,6 +17,201 @@ namespace CPTM.Manutencao.Api.Data.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.12");
 
+            modelBuilder.Entity("CPTM.Manutencao.Api.Models.HistoricoStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("Data")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Matricula")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Observacao")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SolicitacaoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("StatusAnterior")
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("StatusNovo")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SolicitacaoId", "Data");
+
+                    b.ToTable("HISTORICO_STATUS", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Data = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
+                            Matricula = "comum123",
+                            SolicitacaoId = 1,
+                            StatusNovo = "SOLICITADA"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Data = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
+                            Matricula = "comum123",
+                            SolicitacaoId = 2,
+                            StatusNovo = "SOLICITADA"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Data = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
+                            Matricula = "comum123",
+                            SolicitacaoId = 3,
+                            StatusNovo = "SOLICITADA"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Data = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
+                            Matricula = "outro456",
+                            SolicitacaoId = 4,
+                            StatusNovo = "SOLICITADA"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Data = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
+                            Matricula = "comum123",
+                            SolicitacaoId = 5,
+                            StatusNovo = "SOLICITADA"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Data = new DateTime(2026, 11, 1, 12, 1, 0, 0, DateTimeKind.Utc),
+                            Matricula = "SISTEMA",
+                            Observacao = "Carga inicial",
+                            SolicitacaoId = 5,
+                            StatusAnterior = "SOLICITADA",
+                            StatusNovo = "CANCELADA"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Data = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
+                            Matricula = "comum123",
+                            SolicitacaoId = 6,
+                            StatusNovo = "SOLICITADA"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Data = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
+                            Matricula = "comum123",
+                            SolicitacaoId = 7,
+                            StatusNovo = "SOLICITADA"
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Data = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
+                            Matricula = "comum123",
+                            SolicitacaoId = 8,
+                            StatusNovo = "SOLICITADA"
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Data = new DateTime(2026, 11, 1, 12, 1, 0, 0, DateTimeKind.Utc),
+                            Matricula = "SISTEMA",
+                            Observacao = "Carga inicial",
+                            SolicitacaoId = 8,
+                            StatusAnterior = "SOLICITADA",
+                            StatusNovo = "APROVADA"
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Data = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
+                            Matricula = "comum123",
+                            SolicitacaoId = 9,
+                            StatusNovo = "SOLICITADA"
+                        },
+                        new
+                        {
+                            Id = 12,
+                            Data = new DateTime(2026, 11, 1, 12, 1, 0, 0, DateTimeKind.Utc),
+                            Matricula = "SISTEMA",
+                            Observacao = "Carga inicial",
+                            SolicitacaoId = 9,
+                            StatusAnterior = "SOLICITADA",
+                            StatusNovo = "DEVOLVIDA"
+                        },
+                        new
+                        {
+                            Id = 13,
+                            Data = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
+                            Matricula = "comum123",
+                            SolicitacaoId = 10,
+                            StatusNovo = "SOLICITADA"
+                        },
+                        new
+                        {
+                            Id = 14,
+                            Data = new DateTime(2026, 11, 1, 12, 1, 0, 0, DateTimeKind.Utc),
+                            Matricula = "SISTEMA",
+                            Observacao = "Carga inicial",
+                            SolicitacaoId = 10,
+                            StatusAnterior = "SOLICITADA",
+                            StatusNovo = "EM MANUTENCAO"
+                        },
+                        new
+                        {
+                            Id = 15,
+                            Data = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
+                            Matricula = "comum123",
+                            SolicitacaoId = 11,
+                            StatusNovo = "SOLICITADA"
+                        },
+                        new
+                        {
+                            Id = 16,
+                            Data = new DateTime(2026, 11, 1, 12, 1, 0, 0, DateTimeKind.Utc),
+                            Matricula = "SISTEMA",
+                            Observacao = "Carga inicial",
+                            SolicitacaoId = 11,
+                            StatusAnterior = "SOLICITADA",
+                            StatusNovo = "CONCLUIDA"
+                        },
+                        new
+                        {
+                            Id = 17,
+                            Data = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
+                            Matricula = "comum123",
+                            SolicitacaoId = 12,
+                            StatusNovo = "SOLICITADA"
+                        },
+                        new
+                        {
+                            Id = 18,
+                            Data = new DateTime(2026, 11, 1, 12, 1, 0, 0, DateTimeKind.Utc),
+                            Matricula = "SISTEMA",
+                            Observacao = "Carga inicial",
+                            SolicitacaoId = 12,
+                            StatusAnterior = "SOLICITADA",
+                            StatusNovo = "REENVIADA"
+                        });
+                });
+
             modelBuilder.Entity("CPTM.Manutencao.Api.Models.Solicitacao", b =>
                 {
                     b.Property<int>("Id")
@@ -142,6 +337,17 @@ namespace CPTM.Manutencao.Api.Data.Migrations
                             MatriculaSolicitante = "comum123",
                             Status = "REENVIADA"
                         });
+                });
+
+            modelBuilder.Entity("CPTM.Manutencao.Api.Models.HistoricoStatus", b =>
+                {
+                    b.HasOne("CPTM.Manutencao.Api.Models.Solicitacao", "Solicitacao")
+                        .WithMany()
+                        .HasForeignKey("SolicitacaoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Solicitacao");
                 });
 #pragma warning restore 612, 618
         }
