@@ -3,15 +3,38 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using CPTM.Manutencao.Api.Services;
 using CPTM.Manutencao.Api.Data;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Injeção de Dependência do Serviço de autenticação
 builder.Services.AddScoped<IAuthService, AuthService>();
 
-// Motor de Triagem (Workflow). O repositório mock é Singleton para manter os dados em memória.
-builder.Services.AddSingleton<ISolicitacaoRepository, SolicitacaoRepositoryMock>();
+// Persistência (EF Core). Provedor escolhido por Database:Provider ("Sqlite" | "Oracle").
+// SQLite é temporário até existir uma instância Oracle: débito técnico CPTM-92.
+var provedor = builder.Configuration["Database:Provider"] ?? "Sqlite";
+builder.Services.AddDbContext<ManutencaoDbContext>(opcoes =>
+{
+    var connectionString = builder.Configuration.GetConnectionString(provedor)
+        ?? throw new InvalidOperationException($"ConnectionStrings:{provedor} não configurada.");
+
+    if (provedor.Equals("Oracle", StringComparison.OrdinalIgnoreCase))
+        opcoes.UseOracle(connectionString);
+    else
+        opcoes.UseSqlite(connectionString);
+});
+
+// Motor de Triagem (Workflow)
+builder.Services.AddScoped<ISolicitacaoRepository, SolicitacaoRepository>();
 builder.Services.AddScoped<IWorkflowService, WorkflowService>();
+
+// CORS para os front-ends (web Vite e Expo web). As origens vêm de Cors:Origens.
+var origensPermitidas = builder.Configuration.GetSection("Cors:Origens").Get<string[]>() ?? Array.Empty<string>();
+builder.Services.AddCors(opcoes =>
+    opcoes.AddPolicy("Frontends", politica => politica
+        .WithOrigins(origensPermitidas)
+        .AllowAnyHeader()
+        .AllowAnyMethod()));
 
 // Motor de Segurança JWT (a chave vem de appsettings: Jwt:Key)
 var chaveSecreta = Encoding.UTF8.GetBytes(
@@ -69,6 +92,16 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+// Aplica as migrations ao subir. Com Database:RecriarAoIniciar=true (só Development), o banco é
+// apagado e recriado a cada execução, voltando à massa inicial do roteiro de testes.
+using (var escopo = app.Services.CreateScope())
+{
+    var contexto = escopo.ServiceProvider.GetRequiredService<ManutencaoDbContext>();
+    if (app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("Database:RecriarAoIniciar"))
+        contexto.Database.EnsureDeleted();
+    contexto.Database.Migrate();
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -77,6 +110,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("Frontends");
 
 app.UseAuthentication();
 app.UseAuthorization();
