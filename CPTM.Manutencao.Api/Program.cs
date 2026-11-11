@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Identity;
+using CPTM.Manutencao.Api.Models;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -8,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // Injeção de Dependência do Serviço de autenticação
+builder.Services.AddSingleton<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
 // Persistência (EF Core). Provedor escolhido por Database:Provider ("Sqlite" | "Oracle").

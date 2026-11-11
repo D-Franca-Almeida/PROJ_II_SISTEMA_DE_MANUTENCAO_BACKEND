@@ -5,6 +5,16 @@ namespace CPTM.Manutencao.Api.Data
     // Massa do roteiro de testes (Testes/Roteiro-Sprints-1-2-3.ps1), antes mantida no repositório mock.
     public static class DadosIniciais
     {
+        // Hash PBKDF2 (PasswordHasher<Usuario>) da senha "senha", pré-calculado para o seed ficar estável nas migrations.
+        private const string HashSenhaPadrao = "AQAAAAIAAYagAAAAEPG97joPfZDaH+3JpNWPl6yhYANv0qBd26FjONrdxmHnee+lA28Pnrmd00X1NSQpmQ==";
+
+        public static Usuario[] Usuarios() => new[]
+        {
+            new Usuario { Matricula = "admin123", Nome = "Administrador CPTM", SenhaHash = HashSenhaPadrao, Perfil = "Administrativo" },
+            new Usuario { Matricula = "tec123", Nome = "Técnico CPTM", SenhaHash = HashSenhaPadrao, Perfil = "Tecnico" },
+            new Usuario { Matricula = "comum123", Nome = "Usuário Comum", SenhaHash = HashSenhaPadrao, Perfil = "Comum" }
+        };
+
         public static Solicitacao[] Solicitacoes() => new[]
         {
             // IDs 1, 2 e 3: SOLICITADA, pertencentes ao usuário Comum (comum123)

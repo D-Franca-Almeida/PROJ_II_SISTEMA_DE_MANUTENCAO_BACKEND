@@ -339,6 +339,55 @@ namespace CPTM.Manutencao.Api.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("CPTM.Manutencao.Api.Models.Usuario", b =>
+                {
+                    b.Property<string>("Matricula")
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Perfil")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SenhaHash")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Matricula");
+
+                    b.ToTable("USUARIO", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Matricula = "admin123",
+                            Nome = "Administrador CPTM",
+                            Perfil = "Administrativo",
+                            SenhaHash = "AQAAAAIAAYagAAAAEPG97joPfZDaH+3JpNWPl6yhYANv0qBd26FjONrdxmHnee+lA28Pnrmd00X1NSQpmQ=="
+                        },
+                        new
+                        {
+                            Matricula = "tec123",
+                            Nome = "Técnico CPTM",
+                            Perfil = "Tecnico",
+                            SenhaHash = "AQAAAAIAAYagAAAAEPG97joPfZDaH+3JpNWPl6yhYANv0qBd26FjONrdxmHnee+lA28Pnrmd00X1NSQpmQ=="
+                        },
+                        new
+                        {
+                            Matricula = "comum123",
+                            Nome = "Usuário Comum",
+                            Perfil = "Comum",
+                            SenhaHash = "AQAAAAIAAYagAAAAEPG97joPfZDaH+3JpNWPl6yhYANv0qBd26FjONrdxmHnee+lA28Pnrmd00X1NSQpmQ=="
+                        });
+                });
+
             modelBuilder.Entity("CPTM.Manutencao.Api.Models.HistoricoStatus", b =>
                 {
                     b.HasOne("CPTM.Manutencao.Api.Models.Solicitacao", "Solicitacao")
