@@ -30,6 +30,7 @@ builder.Services.AddDbContext<ManutencaoDbContext>(opcoes =>
 // Motor de Triagem (Workflow)
 builder.Services.AddScoped<ISolicitacaoRepository, SolicitacaoRepository>();
 builder.Services.AddScoped<IWorkflowService, WorkflowService>();
+builder.Services.AddScoped<ICatalogoRepository, CatalogoRepository>();
 
 // CORS para os front-ends (web Vite e Expo web). As origens vêm de Cors:Origens.
 var origensPermitidas = builder.Configuration.GetSection("Cors:Origens").Get<string[]>() ?? Array.Empty<string>();

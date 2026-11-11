@@ -15,6 +15,37 @@ namespace CPTM.Manutencao.Api.Data
             new Usuario { Matricula = "comum123", Nome = "Usuário Comum", SenhaHash = HashSenhaPadrao, Perfil = "Comum" }
         };
 
+        public static Estacao[] Estacoes() => new[]
+        {
+            new Estacao { Id = 1, Nome = "Luz", Linha = "7-Rubi" },
+            new Estacao { Id = 2, Nome = "Brás", Linha = "10-Turquesa" },
+            new Estacao { Id = 3, Nome = "Corinthians-Itaquera", Linha = "11-Coral" },
+            new Estacao { Id = 4, Nome = "Calmon Viana", Linha = "12-Safira" },
+            new Estacao { Id = 5, Nome = "Aeroporto-Guarulhos", Linha = "13-Jade" }
+        };
+
+        public static Equipamento[] Equipamentos() => new[]
+        {
+            Equip(1, 1, "Escada rolante da plataforma 2", "PAT-LUZ-0001"),
+            Equip(2, 1, "Catraca de acesso principal", "PAT-LUZ-0002"),
+            Equip(3, 1, "Terminal de bilheteria 01", "PAT-LUZ-0003"),
+            Equip(4, 2, "Catraca de acesso norte", "PAT-BRS-0001"),
+            Equip(5, 2, "Escada rolante da plataforma 1", "PAT-BRS-0002"),
+            Equip(6, 2, "Rádio de comunicação do controle da estação", "PAT-BRS-0003"),
+            Equip(7, 3, "Terminal de bilheteria 01", "PAT-ITQ-0001"),
+            Equip(8, 3, "Catraca de acesso sul", "PAT-ITQ-0002"),
+            Equip(9, 3, "Escada rolante da passarela", "PAT-ITQ-0003"),
+            Equip(10, 4, "Terminal de bilheteria 01", "PAT-CVN-0001"),
+            Equip(11, 4, "Catraca de acesso principal", "PAT-CVN-0002"),
+            Equip(12, 4, "Rádio de comunicação da plataforma", "PAT-CVN-0003"),
+            Equip(13, 5, "Terminal de bilheteria 01", "PAT-AGU-0001"),
+            Equip(14, 5, "Escada rolante do saguão", "PAT-AGU-0002"),
+            Equip(15, 5, "Catraca de acesso ao terminal", "PAT-AGU-0003")
+        };
+
+        private static Equipamento Equip(int id, int estacaoId, string descricao, string patrimonio) =>
+            new() { Id = id, EstacaoId = estacaoId, Descricao = descricao, Patrimonio = patrimonio };
+
         public static Solicitacao[] Solicitacoes() => new[]
         {
             // IDs 1, 2 e 3: SOLICITADA, pertencentes ao usuário Comum (comum123)
