@@ -150,5 +150,34 @@ namespace CPTM.Manutencao.Api.Data
                 throw;
             }
         }
+
+        public void EmTransacao(Action acao)
+        {
+            if (_contexto.Database.CurrentTransaction is not null)
+            {
+                acao();
+                return;
+            }
+
+            using var transacao = _contexto.Database.BeginTransaction();
+            try
+            {
+                acao();
+                transacao.Commit();
+            }
+            catch
+            {
+                _contexto.ChangeTracker.Clear();
+                throw;
+            }
+        }
+
+        public List<PedidoPendenteDto> ListarPedidosPendentes(int ordemServicoId) =>
+            _contexto.PedidosPeca.AsNoTracking()
+                .Where(p => p.OrdemServicoId == ordemServicoId
+                    && (p.Status == StatusPedidoPeca.Solicitado || p.Status == StatusPedidoPeca.Encaminhado))
+                .OrderBy(p => p.Id)
+                .Select(p => new PedidoPendenteDto(p.Id, p.Item, p.Quantidade, p.Status))
+                .ToList();
     }
 }
