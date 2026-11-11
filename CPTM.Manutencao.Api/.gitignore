@@ -1,0 +1,4 @@
+# Banco SQLite local (temporário, ver débito técnico CPTM-92)
+*.db
+*.db-shm
+*.db-wal
