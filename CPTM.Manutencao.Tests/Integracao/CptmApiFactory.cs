@@ -1,0 +1,54 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Data.Sqlite;
+
+namespace CPTM.Manutencao.Tests.Integracao;
+
+public sealed class CptmApiFactory : WebApplicationFactory<Program>
+{
+    private readonly string _arquivoBanco = Path.Combine(Path.GetTempPath(), $"cptm-teste-{Guid.NewGuid():N}.db");
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.UseEnvironment("Development");
+        builder.UseSetting("Database:Provider", "Sqlite");
+        builder.UseSetting("Database:RecriarAoIniciar", "true");
+        builder.UseSetting("ConnectionStrings:Sqlite", $"Data Source={_arquivoBanco}");
+    }
+
+    public async Task<string> LoginAsync(string matricula, string senha = "senha")
+    {
+        using var cliente = CreateClient();
+        var resposta = await cliente.PostAsJsonAsync("/api/Auth/login", new { matricula, senha });
+        Assert.Equal(HttpStatusCode.OK, resposta.StatusCode);
+        using var json = JsonDocument.Parse(await resposta.Content.ReadAsStringAsync());
+        return json.RootElement.GetProperty("token").GetString()!;
+    }
+
+    public HttpClient CriarCliente(string? token = null)
+    {
+        var cliente = CreateClient();
+        if (token is not null)
+            cliente.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return cliente;
+    }
+
+    public async Task<HttpClient> CriarClienteLogadoAsync(string matricula) =>
+        CriarCliente(await LoginAsync(matricula));
+
+    public static StringContent Json(string corpo) => new(corpo, Encoding.UTF8, "application/json");
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        if (!disposing) return;
+        SqliteConnection.ClearAllPools();
+        foreach (var arquivo in new[] { _arquivoBanco, _arquivoBanco + "-wal", _arquivoBanco + "-shm" })
+            try { File.Delete(arquivo); } catch (IOException) { }
+    }
+}
