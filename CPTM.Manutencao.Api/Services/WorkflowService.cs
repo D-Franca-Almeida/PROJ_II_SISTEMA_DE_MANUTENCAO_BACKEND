@@ -32,7 +32,8 @@ namespace CPTM.Manutencao.Api.Services
         void AprovarTriagem(int id, string matriculaLogada);
         void DevolverTriagem(int id, string motivo, string matriculaLogada);
         void CancelarTriagem(int id, string matriculaLogada, string perfilLogado);
-        void IniciarManutencao(int id, string matriculaTecnico);
+        // US-07: RECEBIDA -> EM MANUTENCAO (Técnico); abre a OSM na mesma gravação
+        OrdemServico IniciarManutencao(int id, string matriculaTecnico);
 
         // US-22: APROVADA -> RECEBIDA (Admin), gera NumeroSsm SSM-AAAA-NNNNNN e DataRecebimento
         RecebimentoResultado ReceberNaOficina(int id, string matriculaAdmin);
@@ -94,22 +95,34 @@ namespace CPTM.Manutencao.Api.Services
             Transicionar(solicitacao, StatusSolicitacao.Cancelada, matriculaLogada);
         }
 
-        // Sprint 3 (US-07): Recepção na oficina. APROVADA -> EM MANUTENCAO
-        public void IniciarManutencao(int id, string matriculaTecnico)
+        // US-07: o técnico assume uma SSL RECEBIDA na oficina. RECEBIDA -> EM MANUTENCAO + OSM (uma única gravação)
+        public OrdemServico IniciarManutencao(int id, string matriculaTecnico)
         {
             var solicitacao = _repositorio.ObterPorId(id)
                 ?? throw new SolicitacaoNaoEncontradaException(id);
 
-            if (solicitacao.Status != StatusSolicitacao.Aprovada)
+            if (solicitacao.Status != StatusSolicitacao.Recebida)
                 throw new RegraDeNegocioException(
-                    $"Transição inválida: só é possível iniciar a manutenção de uma solicitação APROVADA (status atual: {solicitacao.Status}).");
+                    $"Transição inválida: só é possível iniciar a manutenção de uma solicitação RECEBIDA na oficina (status atual: {solicitacao.Status}).");
 
             if (string.IsNullOrWhiteSpace(matriculaTecnico))
                 throw new RegraDeNegocioException("A identificação do técnico responsável é obrigatória.");
 
-            solicitacao.MatriculaTecnico = matriculaTecnico.Trim();
-            solicitacao.DataInicioManutencao = _relogio.GetUtcNow().UtcDateTime;
-            Transicionar(solicitacao, StatusSolicitacao.EmManutencao, solicitacao.MatriculaTecnico);
+            var tecnico = matriculaTecnico.Trim();
+            var agora = _relogio.GetUtcNow().UtcDateTime;
+            var ordem = new OrdemServico { MatriculaTecnico = tecnico, DataAbertura = agora };
+            solicitacao.MatriculaTecnico = tecnico;
+            solicitacao.DataInicioManutencao = agora;
+            solicitacao.OrdemServico = ordem;
+            try
+            {
+                Transicionar(solicitacao, StatusSolicitacao.EmManutencao, tecnico);
+            }
+            catch (DbUpdateException ex)
+            {
+                throw new ConflitoDeConcorrenciaException(id, ex);
+            }
+            return ordem;
         }
 
         public RecebimentoResultado ReceberNaOficina(int id, string matriculaAdmin)

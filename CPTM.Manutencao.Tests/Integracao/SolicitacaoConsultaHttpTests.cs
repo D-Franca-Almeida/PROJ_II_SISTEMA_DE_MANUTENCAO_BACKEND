@@ -194,6 +194,9 @@ public sealed class SolicitacaoConsultaHttpTests : IClassFixture<CptmApiFactory>
     [Fact]
     public async Task Detalhe_em_manutencao_traz_tecnico_e_data_inicio_em_utc()
     {
+        using var admin = await _api.CriarClienteLogadoAsync("admin123");
+        using var recebida = await admin.PutAsync("/api/Solicitacoes/8/receber", null);
+        Assert.Equal(HttpStatusCode.OK, recebida.StatusCode);
         using var tecnico = await _api.CriarClienteLogadoAsync("tec123");
         using var inicio = await tecnico.PutAsync("/api/Solicitacoes/8/iniciar-manutencao", null);
         Assert.Equal(HttpStatusCode.OK, inicio.StatusCode);

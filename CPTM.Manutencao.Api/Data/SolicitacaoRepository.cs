@@ -34,6 +34,15 @@ namespace CPTM.Manutencao.Api.Data
             return solicitacoes.Select(s => Mapear(s, DiasParaExpirar(s, referencias))).ToList();
         }
 
+        public List<SolicitacaoDto> ListarRecebidas() =>
+            _contexto.Solicitacoes.AsNoTracking()
+                .Include(s => s.Equipamento).ThenInclude(e => e!.Estacao)
+                .Where(s => s.Status == StatusSolicitacao.Recebida)
+                .OrderBy(s => s.DataRecebimento).ThenBy(s => s.Id)
+                .AsEnumerable()
+                .Select(s => Mapear(s, null))
+                .ToList();
+
         public SolicitacaoDetalheDto? ObterDetalhe(int id)
         {
             var s = _contexto.Solicitacoes.AsNoTracking()
@@ -47,10 +56,14 @@ namespace CPTM.Manutencao.Api.Data
                 .Select(h => new HistoricoStatusDto(h.StatusAnterior, h.StatusNovo, h.Matricula, h.Data, h.Observacao))
                 .ToList();
 
+            var ordemServicoId = _contexto.OrdensServico.AsNoTracking()
+                .Where(o => o.SolicitacaoId == id).Select(o => (int?)o.Id).FirstOrDefault();
+
             var r = Mapear(s, DiasParaExpirar(s, DatasDeEntradaNoStatus(new[] { s })));
             return new SolicitacaoDetalheDto(r.Id, r.Status, r.Descricao, r.FotoUrl, r.DataAbertura,
                 r.MatriculaSolicitante, r.Equipamento, r.Estacao, r.MotivoDevolucao,
-                s.MatriculaTecnico, s.DataInicioManutencao, historico, r.DiasParaExpirar, s.NumeroSsm, s.DataRecebimento);
+                s.MatriculaTecnico, s.DataInicioManutencao, historico, r.DiasParaExpirar, s.NumeroSsm, s.DataRecebimento,
+                ordemServicoId);
         }
 
         public List<CandidatoExpiracao> ObterCandidatosExpiracao()

@@ -111,12 +111,12 @@ public sealed class WorkflowServiceTests : IDisposable
     [Fact]
     public void IniciarManutencao_GravaUmaLinhaComMatriculaDoTecnico()
     {
-        var s = Criar(StatusSolicitacao.Aprovada);
+        var s = Criar(StatusSolicitacao.Recebida);
 
         _servico.IniciarManutencao(s.Id, "3003");
 
         var h = Assert.Single(Historico(s.Id));
-        Assert.Equal(StatusSolicitacao.Aprovada, h.StatusAnterior);
+        Assert.Equal(StatusSolicitacao.Recebida, h.StatusAnterior);
         Assert.Equal(StatusSolicitacao.EmManutencao, h.StatusNovo);
         Assert.Equal("3003", h.Matricula);
     }
@@ -130,12 +130,13 @@ public sealed class WorkflowServiceTests : IDisposable
         s.Status = StatusSolicitacao.Reenviada;
         _db.SaveChanges();
         _servico.AprovarTriagem(s.Id, "2002");
+        _servico.ReceberNaOficina(s.Id, "2002");
         _servico.IniciarManutencao(s.Id, "3003");
 
         var linhas = Historico(s.Id);
-        Assert.Equal(3, linhas.Count);
+        Assert.Equal(4, linhas.Count);
         Assert.Equal(
-            new[] { StatusSolicitacao.Devolvida, StatusSolicitacao.Aprovada, StatusSolicitacao.EmManutencao },
+            new[] { StatusSolicitacao.Devolvida, StatusSolicitacao.Aprovada, StatusSolicitacao.Recebida, StatusSolicitacao.EmManutencao },
             linhas.Select(l => l.StatusNovo));
     }
 

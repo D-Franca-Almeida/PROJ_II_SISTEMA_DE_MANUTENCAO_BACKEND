@@ -12,6 +12,9 @@ namespace CPTM.Manutencao.Api.Data
         // Mais recentes primeiro (DataAbertura desc, Id desc); filtros opcionais por status e solicitante
         List<SolicitacaoDto> Listar(string? status, string? matriculaSolicitante);
 
+        // Fila do técnico (US-07): RECEBIDAS, mais antigas na oficina primeiro (DataRecebimento asc, Id asc)
+        List<SolicitacaoDto> ListarRecebidas();
+
         SolicitacaoDetalheDto? ObterDetalhe(int id);
 
         // Grava a solicitação e a linha de histórico da transição na mesma transação (US-16)

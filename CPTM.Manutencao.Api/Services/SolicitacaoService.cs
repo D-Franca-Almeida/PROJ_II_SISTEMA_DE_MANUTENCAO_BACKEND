@@ -13,6 +13,8 @@ namespace CPTM.Manutencao.Api.Services
 
         List<SolicitacaoDto> ListarDoSolicitante(string matricula);
 
+        List<SolicitacaoDto> ListarRecebidas();
+
         SolicitacaoDetalheDto ObterDetalhe(int id, string matricula, string perfil);
     }
 
@@ -153,6 +155,8 @@ namespace CPTM.Manutencao.Api.Services
         }
 
         public List<SolicitacaoDto> ListarDoSolicitante(string matricula) => _solicitacoes.Listar(null, matricula);
+
+        public List<SolicitacaoDto> ListarRecebidas() => _solicitacoes.ListarRecebidas();
 
         public SolicitacaoDetalheDto ObterDetalhe(int id, string matricula, string perfil)
         {

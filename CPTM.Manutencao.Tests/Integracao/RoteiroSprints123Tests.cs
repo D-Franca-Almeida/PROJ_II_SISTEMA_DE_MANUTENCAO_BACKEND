@@ -59,10 +59,13 @@ public sealed class RoteiroSprints123Tests : IClassFixture<CptmApiFactory>
 
         await Passo("8a", HttpStatusCode.Forbidden, admin.PutAsync("/api/Solicitacoes/1/iniciar-manutencao", null));
         TemPropriedade("8", await Passo("8", HttpStatusCode.BadRequest, tecnico.PutAsync("/api/Solicitacoes/2/iniciar-manutencao", null)), "erro");
+        TemPropriedade("9a", await Passo("9a", HttpStatusCode.BadRequest, tecnico.PutAsync("/api/Solicitacoes/1/iniciar-manutencao", null)), "erro");
+        TemPropriedade("9b", await Passo("9b", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/1/receber", null)), "numeroSsm");
         var passo9 = await Passo("9", HttpStatusCode.OK, tecnico.PutAsync("/api/Solicitacoes/1/iniciar-manutencao", null));
         Assert.Equal(StatusSolicitacao.EmManutencao, passo9!.Value.GetProperty("novoStatus").GetString());
         Assert.Equal("tec123", passo9.Value.GetProperty("tecnicoResponsavel").GetString());
         Assert.Equal(1, passo9.Value.GetProperty("solicitacaoId").GetInt32());
+        TemPropriedade("9", passo9, "ordemServicoId");
 
         TemPropriedade("10", await Passo("10", HttpStatusCode.BadRequest,
             comum.PutAsync("/api/Solicitacoes/2/reenviar", Formulario(("descricao", "   ")))), "erro");
@@ -83,5 +86,17 @@ public sealed class RoteiroSprints123Tests : IClassFixture<CptmApiFactory>
         Assert.Matches(@"^SSM-\d{4}-\d{6}$", passo19.Value.GetProperty("numeroSsm").GetString());
         TemPropriedade("20", await Passo("20", HttpStatusCode.BadRequest, comum.PutAsync("/api/Solicitacoes/6/cancelar", null)), "erro");
         TemPropriedade("21", await Passo("21", HttpStatusCode.BadRequest, admin.PutAsync("/api/Solicitacoes/6/receber", null)), "erro");
+
+        await Passo("22", HttpStatusCode.Forbidden, comum.GetAsync("/api/Solicitacoes/recebidas"));
+        var passo23 = await Passo("23", HttpStatusCode.OK, tecnico.GetAsync("/api/Solicitacoes/recebidas"));
+        Assert.Contains(passo23!.Value.EnumerateArray(), s => s.GetProperty("id").GetInt32() == 6);
+        var passo24 = await Passo("24", HttpStatusCode.OK, tecnico.PutAsync("/api/Solicitacoes/6/iniciar-manutencao", null));
+        TemPropriedade("24", passo24, "ordemServicoId");
+        TemPropriedade("25", await Passo("25", HttpStatusCode.BadRequest, tecnico.PutAsync("/api/Solicitacoes/6/iniciar-manutencao", null)), "erro");
+        var passo26 = await Passo("26", HttpStatusCode.OK, tecnico.GetAsync("/api/ordens-servico/minhas"));
+        var solicitacoesDasOsms = passo26!.Value.EnumerateArray().Select(o => o.GetProperty("solicitacaoId").GetInt32()).ToList();
+        Assert.Contains(1, solicitacoesDasOsms);
+        Assert.Contains(6, solicitacoesDasOsms);
+        await Passo("27", HttpStatusCode.Forbidden, admin.GetAsync("/api/ordens-servico/minhas"));
     }
 }
