@@ -17,6 +17,195 @@ namespace CPTM.Manutencao.Api.Data.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.12");
 
+            modelBuilder.Entity("CPTM.Manutencao.Api.Models.Equipamento", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("EstacaoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Patrimonio")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EstacaoId");
+
+                    b.HasIndex("Patrimonio")
+                        .IsUnique();
+
+                    b.ToTable("EQUIPAMENTO", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Descricao = "Escada rolante da plataforma 2",
+                            EstacaoId = 1,
+                            Patrimonio = "PAT-LUZ-0001"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Descricao = "Catraca de acesso principal",
+                            EstacaoId = 1,
+                            Patrimonio = "PAT-LUZ-0002"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Descricao = "Terminal de bilheteria 01",
+                            EstacaoId = 1,
+                            Patrimonio = "PAT-LUZ-0003"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Descricao = "Catraca de acesso norte",
+                            EstacaoId = 2,
+                            Patrimonio = "PAT-BRS-0001"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Descricao = "Escada rolante da plataforma 1",
+                            EstacaoId = 2,
+                            Patrimonio = "PAT-BRS-0002"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Descricao = "Rádio de comunicação do controle da estação",
+                            EstacaoId = 2,
+                            Patrimonio = "PAT-BRS-0003"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Descricao = "Terminal de bilheteria 01",
+                            EstacaoId = 3,
+                            Patrimonio = "PAT-ITQ-0001"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Descricao = "Catraca de acesso sul",
+                            EstacaoId = 3,
+                            Patrimonio = "PAT-ITQ-0002"
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Descricao = "Escada rolante da passarela",
+                            EstacaoId = 3,
+                            Patrimonio = "PAT-ITQ-0003"
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Descricao = "Terminal de bilheteria 01",
+                            EstacaoId = 4,
+                            Patrimonio = "PAT-CVN-0001"
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Descricao = "Catraca de acesso principal",
+                            EstacaoId = 4,
+                            Patrimonio = "PAT-CVN-0002"
+                        },
+                        new
+                        {
+                            Id = 12,
+                            Descricao = "Rádio de comunicação da plataforma",
+                            EstacaoId = 4,
+                            Patrimonio = "PAT-CVN-0003"
+                        },
+                        new
+                        {
+                            Id = 13,
+                            Descricao = "Terminal de bilheteria 01",
+                            EstacaoId = 5,
+                            Patrimonio = "PAT-AGU-0001"
+                        },
+                        new
+                        {
+                            Id = 14,
+                            Descricao = "Escada rolante do saguão",
+                            EstacaoId = 5,
+                            Patrimonio = "PAT-AGU-0002"
+                        },
+                        new
+                        {
+                            Id = 15,
+                            Descricao = "Catraca de acesso ao terminal",
+                            EstacaoId = 5,
+                            Patrimonio = "PAT-AGU-0003"
+                        });
+                });
+
+            modelBuilder.Entity("CPTM.Manutencao.Api.Models.Estacao", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Linha")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ESTACAO", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Linha = "7-Rubi",
+                            Nome = "Luz"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Linha = "10-Turquesa",
+                            Nome = "Brás"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Linha = "11-Coral",
+                            Nome = "Corinthians-Itaquera"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Linha = "12-Safira",
+                            Nome = "Calmon Viana"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Linha = "13-Jade",
+                            Nome = "Aeroporto-Guarulhos"
+                        });
+                });
+
             modelBuilder.Entity("CPTM.Manutencao.Api.Models.HistoricoStatus", b =>
                 {
                     b.Property<int>("Id")
@@ -386,6 +575,17 @@ namespace CPTM.Manutencao.Api.Data.Migrations
                             Perfil = "Comum",
                             SenhaHash = "AQAAAAIAAYagAAAAEPG97joPfZDaH+3JpNWPl6yhYANv0qBd26FjONrdxmHnee+lA28Pnrmd00X1NSQpmQ=="
                         });
+                });
+
+            modelBuilder.Entity("CPTM.Manutencao.Api.Models.Equipamento", b =>
+                {
+                    b.HasOne("CPTM.Manutencao.Api.Models.Estacao", "Estacao")
+                        .WithMany()
+                        .HasForeignKey("EstacaoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Estacao");
                 });
 
             modelBuilder.Entity("CPTM.Manutencao.Api.Models.HistoricoStatus", b =>

@@ -13,6 +13,8 @@ namespace CPTM.Manutencao.Api.Data
         public DbSet<HistoricoStatus> HistoricoStatus => Set<HistoricoStatus>();
 
         public DbSet<Usuario> Usuarios => Set<Usuario>();
+        public DbSet<Estacao> Estacoes => Set<Estacao>();
+        public DbSet<Equipamento> Equipamentos => Set<Equipamento>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -26,6 +28,32 @@ namespace CPTM.Manutencao.Api.Data
                 entidade.Property(u => u.Perfil).HasMaxLength(30).IsRequired();
 
                 entidade.HasData(DadosIniciais.Usuarios());
+            });
+
+            modelBuilder.Entity<Estacao>(entidade =>
+            {
+                entidade.ToTable("ESTACAO");
+                entidade.HasKey(e => e.Id);
+                entidade.Property(e => e.Nome).HasMaxLength(100).IsRequired();
+                entidade.Property(e => e.Linha).HasMaxLength(30).IsRequired();
+
+                entidade.HasData(DadosIniciais.Estacoes());
+            });
+
+            modelBuilder.Entity<Equipamento>(entidade =>
+            {
+                entidade.ToTable("EQUIPAMENTO");
+                entidade.HasKey(e => e.Id);
+                entidade.Property(e => e.Descricao).HasMaxLength(200).IsRequired();
+                entidade.Property(e => e.Patrimonio).HasMaxLength(30).IsRequired();
+                entidade.HasIndex(e => e.Patrimonio).IsUnique();
+                entidade.HasIndex(e => e.EstacaoId);
+                entidade.HasOne(e => e.Estacao)
+                    .WithMany()
+                    .HasForeignKey(e => e.EstacaoId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entidade.HasData(DadosIniciais.Equipamentos());
             });
 
             modelBuilder.Entity<Solicitacao>(entidade =>
