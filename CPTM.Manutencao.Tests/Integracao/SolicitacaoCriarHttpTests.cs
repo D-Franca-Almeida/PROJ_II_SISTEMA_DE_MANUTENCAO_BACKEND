@@ -10,6 +10,14 @@ namespace CPTM.Manutencao.Tests.Integracao;
 public sealed class SolicitacaoCriarHttpTests : IClassFixture<CptmApiFactory>
 {
     private static readonly byte[] Png = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3, 4 };
+    private static readonly byte[] Jpeg = { 0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3, 4 };
+
+    private static byte[] PngDeTamanho(int tamanho)
+    {
+        var bytes = new byte[tamanho];
+        Png.CopyTo(bytes, 0);
+        return bytes;
+    }
 
     private readonly CptmApiFactory _api;
 
@@ -93,7 +101,7 @@ public sealed class SolicitacaoCriarHttpTests : IClassFixture<CptmApiFactory>
         using var cliente = await _api.CriarClienteLogadoAsync("comum123");
         foreach (var nome in new[] { "a.jpg", "b.JPEG" })
         {
-            using var resposta = await cliente.PostAsync("/api/solicitacoes", Form(nome: nome, contentType: "image/jpeg"));
+            using var resposta = await cliente.PostAsync("/api/solicitacoes", Form(foto: Jpeg, nome: nome, contentType: "image/jpeg"));
             Assert.Equal(HttpStatusCode.Created, resposta.StatusCode);
         }
     }
@@ -102,7 +110,7 @@ public sealed class SolicitacaoCriarHttpTests : IClassFixture<CptmApiFactory>
     public async Task Foto_exatamente_5MB_e_aceita()
     {
         using var cliente = await _api.CriarClienteLogadoAsync("comum123");
-        using var resposta = await cliente.PostAsync("/api/solicitacoes", Form(foto: new byte[5 * 1024 * 1024]));
+        using var resposta = await cliente.PostAsync("/api/solicitacoes", Form(foto: PngDeTamanho(5 * 1024 * 1024)));
         Assert.Equal(HttpStatusCode.Created, resposta.StatusCode);
     }
 
@@ -110,7 +118,10 @@ public sealed class SolicitacaoCriarHttpTests : IClassFixture<CptmApiFactory>
     {
         new object?[] { "sem foto", "descricao", "1", false, new byte[] { 1 }, "f.png", "image/png", "A foto é obrigatória." },
         new object?[] { "foto vazia", "descricao", "1", true, Array.Empty<byte>(), "f.png", "image/png", "A foto é obrigatória." },
-        new object?[] { "foto acima de 5MB", "descricao", "1", true, new byte[5 * 1024 * 1024 + 1], "f.png", "image/png", "A foto deve ter no máximo 5 MB." },
+        new object?[] { "foto acima de 5MB", "descricao", "1", true, PngDeTamanho(5 * 1024 * 1024 + 1), "f.png", "image/png", "A foto deve ter no máximo 5 MB." },
+        new object?[] { "png com bytes de texto", "descricao", "1", true, "nao sou imagem"u8.ToArray(), "f.png", "image/png", "O conteúdo da foto não é uma imagem JPG ou PNG válida." },
+        new object?[] { "jpg com bytes de png", "descricao", "1", true, Png, "f.jpg", "image/jpeg", "O conteúdo da foto não é uma imagem JPG ou PNG válida." },
+        new object?[] { "png menor que a assinatura", "descricao", "1", true, new byte[] { 0x89, 0x50 }, "f.png", "image/png", "O conteúdo da foto não é uma imagem JPG ou PNG válida." },
         new object?[] { "extensao gif", "descricao", "1", true, new byte[] { 1 }, "f.gif", "image/gif", "A foto deve ser JPG, JPEG ou PNG." },
         new object?[] { "extensao exe com content type png", "descricao", "1", true, new byte[] { 1 }, "f.exe", "image/png", "A foto deve ser JPG, JPEG ou PNG." },
         new object?[] { "content type pdf com extensao png", "descricao", "1", true, new byte[] { 1 }, "f.png", "application/pdf", "A foto deve ser JPG, JPEG ou PNG." },
@@ -135,6 +146,33 @@ public sealed class SolicitacaoCriarHttpTests : IClassFixture<CptmApiFactory>
         Assert.True(resposta.StatusCode == HttpStatusCode.BadRequest, cenario);
         Assert.Equal(erroEsperado, (await LerJson(resposta)).GetProperty("erro").GetString());
         Assert.Equal(arquivosAntes, ArquivosGravados());
+    }
+
+    [Fact]
+    public async Task Corpo_muito_acima_do_limite_devolve_400_sem_gravar_nada()
+    {
+        using var cliente = await _api.CriarClienteLogadoAsync("comum123");
+        var arquivosAntes = ArquivosGravados();
+
+        using var resposta = await cliente.PostAsync("/api/solicitacoes", Form(foto: PngDeTamanho(8 * 1024 * 1024)));
+
+        Assert.Equal(HttpStatusCode.BadRequest, resposta.StatusCode);
+        Assert.Equal("A foto deve ter no máximo 5 MB.", (await LerJson(resposta)).GetProperty("erro").GetString());
+        Assert.Equal(arquivosAntes, ArquivosGravados());
+    }
+
+    [Fact]
+    public async Task Nome_do_arquivo_do_cliente_nao_define_o_caminho_gravado()
+    {
+        using var cliente = await _api.CriarClienteLogadoAsync("comum123");
+
+        using var resposta = await cliente.PostAsync("/api/solicitacoes", Form(nome: "../../../evil.png"));
+
+        Assert.Equal(HttpStatusCode.Created, resposta.StatusCode);
+        var url = (await LerJson(resposta)).GetProperty("fotoUrl").GetString()!;
+        Assert.Matches(@"^/uploads/ssl/[0-9a-f]{32}\.png$", url);
+        Assert.False(File.Exists(Path.Combine(_api.PastaUploads, "..", "evil.png")));
+        Assert.False(File.Exists(Path.Combine(_api.PastaUploads, "evil.png")));
     }
 
     [Fact]

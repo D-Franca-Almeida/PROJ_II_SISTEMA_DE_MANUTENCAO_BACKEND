@@ -13,6 +13,11 @@ namespace CPTM.Manutencao.Api.Services
         public const long TamanhoMaximoFoto = 5 * 1024 * 1024;
         private const int TamanhoMaximoDescricao = 500;
 
+        public const long TamanhoMaximoRequisicao = TamanhoMaximoFoto + 64 * 1024;
+
+        private static readonly byte[] AssinaturaJpeg = { 0xFF, 0xD8, 0xFF };
+        private static readonly byte[] AssinaturaPng = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+
         private static readonly Dictionary<string, string[]> TiposPermitidos = new(StringComparer.OrdinalIgnoreCase)
         {
             [".jpg"] = new[] { "image/jpeg" },
@@ -54,6 +59,8 @@ namespace CPTM.Manutencao.Api.Services
             if (!TiposPermitidos.TryGetValue(extensao, out var contentTypes) ||
                 !contentTypes.Contains(foto.ContentType, StringComparer.OrdinalIgnoreCase))
                 throw new RegraDeNegocioException("A foto deve ser JPG, JPEG ou PNG.");
+            if (!await ConteudoCorrespondeAsync(foto, foto.ContentType.Equals("image/png", StringComparison.OrdinalIgnoreCase) ? AssinaturaPng : AssinaturaJpeg))
+                throw new RegraDeNegocioException("O conteúdo da foto não é uma imagem JPG ou PNG válida.");
 
             var url = await _fotos.SalvarAsync(foto, extensao.ToLowerInvariant());
             try
@@ -83,6 +90,20 @@ namespace CPTM.Manutencao.Api.Services
                 _fotos.Excluir(url);
                 throw;
             }
+        }
+
+        private static async Task<bool> ConteudoCorrespondeAsync(IFormFile foto, byte[] assinatura)
+        {
+            var cabecalho = new byte[assinatura.Length];
+            await using var stream = foto.OpenReadStream();
+            var lidos = 0;
+            while (lidos < cabecalho.Length)
+            {
+                var n = await stream.ReadAsync(cabecalho.AsMemory(lidos));
+                if (n == 0) return false;
+                lidos += n;
+            }
+            return cabecalho.AsSpan().SequenceEqual(assinatura);
         }
     }
 }

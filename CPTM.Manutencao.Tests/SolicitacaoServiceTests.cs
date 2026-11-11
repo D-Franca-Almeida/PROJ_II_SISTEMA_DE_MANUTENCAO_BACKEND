@@ -1,4 +1,3 @@
-using System.Text;
 using CPTM.Manutencao.Api.Data;
 using CPTM.Manutencao.Api.Models;
 using CPTM.Manutencao.Api.Services;
@@ -35,7 +34,9 @@ public sealed class SolicitacaoServiceTests : IDisposable
 
     private static IFormFile Arquivo(string nome = "f.png", string contentType = "image/png", int tamanho = 10)
     {
-        var stream = new MemoryStream(Encoding.ASCII.GetBytes(new string('a', tamanho)));
+        var bytes = new byte[tamanho];
+        new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }.CopyTo(bytes, 0);
+        var stream = new MemoryStream(bytes);
         return new FormFile(stream, 0, tamanho, "foto", nome) { Headers = new HeaderDictionary(), ContentType = contentType };
     }
 

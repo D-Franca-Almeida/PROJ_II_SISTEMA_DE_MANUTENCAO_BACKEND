@@ -1,4 +1,5 @@
 ﻿using System;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -114,6 +115,13 @@ namespace CPTM.Manutencao.Api.Data.Migrations
                 keyValue: 12,
                 columns: new[] { "DataAbertura", "EquipamentoId", "FotoUrl" },
                 values: new object[] { new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc), 5, null });
+
+            if (migrationBuilder.IsSqlite())
+                migrationBuilder.Sql(
+                    "UPDATE SOLICITACOES SET DataAbertura = COALESCE(" +
+                    "(SELECT MIN(h.Data) FROM HISTORICO_STATUS h WHERE h.SolicitacaoId = SOLICITACOES.Id), " +
+                    "strftime('%Y-%m-%d %H:%M:%S', 'now')) " +
+                    "WHERE DataAbertura < '1900-01-01';");
 
             migrationBuilder.CreateIndex(
                 name: "IX_SOLICITACOES_EquipamentoId",
