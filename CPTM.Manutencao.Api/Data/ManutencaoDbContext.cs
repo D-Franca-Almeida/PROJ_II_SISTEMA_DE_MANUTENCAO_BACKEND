@@ -12,8 +12,22 @@ namespace CPTM.Manutencao.Api.Data
         public DbSet<Solicitacao> Solicitacoes => Set<Solicitacao>();
         public DbSet<HistoricoStatus> HistoricoStatus => Set<HistoricoStatus>();
 
+        public DbSet<Usuario> Usuarios => Set<Usuario>();
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<Usuario>(entidade =>
+            {
+                entidade.ToTable("USUARIO");
+                entidade.HasKey(u => u.Matricula);
+                entidade.Property(u => u.Matricula).HasMaxLength(30);
+                entidade.Property(u => u.Nome).HasMaxLength(100).IsRequired();
+                entidade.Property(u => u.SenhaHash).HasMaxLength(200).IsRequired();
+                entidade.Property(u => u.Perfil).HasMaxLength(30).IsRequired();
+
+                entidade.HasData(DadosIniciais.Usuarios());
+            });
+
             modelBuilder.Entity<Solicitacao>(entidade =>
             {
                 entidade.ToTable("SOLICITACOES");
