@@ -49,6 +49,7 @@ public sealed class SolicitacaoServiceTests : IDisposable
         public Solicitacao? ObterPorId(int id) => null;
         public List<SolicitacaoDto> Listar(string? status, string? matriculaSolicitante) => new();
         public SolicitacaoDetalheDto? ObterDetalhe(int id) => null;
+        public List<CandidatoExpiracao> ObterCandidatosExpiracao() => new();
         public void Salvar(Solicitacao solicitacao, HistoricoStatus historico) => throw new InvalidOperationException("falha simulada");
     }
 

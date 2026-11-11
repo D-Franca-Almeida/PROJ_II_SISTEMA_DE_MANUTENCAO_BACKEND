@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using CPTM.Manutencao.Api.Models;
+using CPTM.Manutencao.Api.Services;
 
 namespace CPTM.Manutencao.Api.Data
 {
@@ -7,10 +8,14 @@ namespace CPTM.Manutencao.Api.Data
     public class SolicitacaoRepository : ISolicitacaoRepository
     {
         private readonly ManutencaoDbContext _contexto;
+        private readonly TimeProvider _relogio;
+        private readonly PrazosOptions _prazos;
 
-        public SolicitacaoRepository(ManutencaoDbContext contexto)
+        public SolicitacaoRepository(ManutencaoDbContext contexto, TimeProvider? relogio = null, PrazosOptions? prazos = null)
         {
             _contexto = contexto;
+            _relogio = relogio ?? TimeProvider.System;
+            _prazos = prazos ?? new PrazosOptions();
         }
 
         public Solicitacao? ObterPorId(int id) => _contexto.Solicitacoes.Find(id);
@@ -24,10 +29,9 @@ namespace CPTM.Manutencao.Api.Data
             if (matriculaSolicitante is not null)
                 consulta = consulta.Where(s => s.MatriculaSolicitante == matriculaSolicitante);
 
-            return consulta.OrderByDescending(s => s.DataAbertura).ThenByDescending(s => s.Id)
-                .ToList()
-                .Select(Mapear)
-                .ToList();
+            var solicitacoes = consulta.OrderByDescending(s => s.DataAbertura).ThenByDescending(s => s.Id).ToList();
+            var referencias = DatasDeEntradaNoStatus(solicitacoes);
+            return solicitacoes.Select(s => Mapear(s, DiasParaExpirar(s, referencias))).ToList();
         }
 
         public SolicitacaoDetalheDto? ObterDetalhe(int id)
@@ -43,17 +47,52 @@ namespace CPTM.Manutencao.Api.Data
                 .Select(h => new HistoricoStatusDto(h.StatusAnterior, h.StatusNovo, h.Matricula, h.Data, h.Observacao))
                 .ToList();
 
-            var r = Mapear(s);
+            var r = Mapear(s, DiasParaExpirar(s, DatasDeEntradaNoStatus(new[] { s })));
             return new SolicitacaoDetalheDto(r.Id, r.Status, r.Descricao, r.FotoUrl, r.DataAbertura,
                 r.MatriculaSolicitante, r.Equipamento, r.Estacao, r.MotivoDevolucao,
-                s.MatriculaTecnico, s.DataInicioManutencao, historico);
+                s.MatriculaTecnico, s.DataInicioManutencao, historico, r.DiasParaExpirar);
         }
 
-        private static SolicitacaoDto Mapear(Solicitacao s) => new(
+        public List<CandidatoExpiracao> ObterCandidatosExpiracao()
+        {
+            var candidatas = _contexto.Solicitacoes
+                .Where(s => s.Status == StatusSolicitacao.Devolvida || s.Status == StatusSolicitacao.Aprovada)
+                .OrderBy(s => s.Id)
+                .ToList();
+            var referencias = DatasDeEntradaNoStatus(candidatas);
+            return candidatas.Select(s => new CandidatoExpiracao(s, referencias[s.Id])).ToList();
+        }
+
+        private Dictionary<int, DateTime> DatasDeEntradaNoStatus(IEnumerable<Solicitacao> solicitacoes)
+        {
+            var alvo = solicitacoes.Where(s => PrazoExpiracao.Expira(s.Status)).ToList();
+            var resultado = alvo.ToDictionary(s => s.Id, s => s.DataAbertura);
+            if (alvo.Count == 0) return resultado;
+
+            var ids = alvo.Select(s => s.Id).ToList();
+            var historico = _contexto.HistoricoStatus.AsNoTracking()
+                .Where(h => ids.Contains(h.SolicitacaoId))
+                .Select(h => new { h.SolicitacaoId, h.StatusNovo, h.Data })
+                .ToList();
+            foreach (var s in alvo)
+            {
+                var datas = historico.Where(h => h.SolicitacaoId == s.Id && h.StatusNovo == s.Status).Select(h => h.Data).ToList();
+                if (datas.Count > 0) resultado[s.Id] = datas.Max();
+            }
+            return resultado;
+        }
+
+        private int? DiasParaExpirar(Solicitacao s, Dictionary<int, DateTime> referencias) =>
+            referencias.TryGetValue(s.Id, out var referencia)
+                ? PrazoExpiracao.DiasParaExpirar(referencia, _relogio.GetUtcNow().UtcDateTime, _prazos.Dias)
+                : null;
+
+        private static SolicitacaoDto Mapear(Solicitacao s, int? diasParaExpirar) => new(
             s.Id, s.Status, s.Descricao, s.FotoUrl, s.DataAbertura, s.MatriculaSolicitante,
             s.Equipamento is null ? null : new EquipamentoDto(s.Equipamento.Id, s.Equipamento.EstacaoId, s.Equipamento.Descricao, s.Equipamento.Patrimonio),
             s.Equipamento?.Estacao is null ? null : new EstacaoDto(s.Equipamento.Estacao.Id, s.Equipamento.Estacao.Nome, s.Equipamento.Estacao.Linha),
-            s.MotivoDevolucao);
+            s.MotivoDevolucao,
+            diasParaExpirar);
 
         public void Salvar(Solicitacao solicitacao, HistoricoStatus historico)
         {
