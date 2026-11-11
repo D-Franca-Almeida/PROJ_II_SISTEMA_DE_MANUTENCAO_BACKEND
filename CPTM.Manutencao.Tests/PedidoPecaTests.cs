@@ -435,4 +435,75 @@ public sealed class PedidoPecaTests : IDisposable
         Assert.Null(_db.OrdensServico.AsNoTracking().Single(o => o.Id == ordemId).MotivoNaoExecucao);
         Assert.Empty(_db.HistoricoStatus.Where(h => h.SolicitacaoId == sslId));
     }
+
+    [Fact]
+    public void Concluir_com_pedido_criado_entre_a_leitura_e_a_gravacao_e_bloqueado_sem_gravar()
+    {
+        var (sslId, ordemId) = Osm();
+        int criado = 0;
+        using var contextoB = NovoContexto();
+        var workflowB = new WorkflowService(
+            new RepositorioComPedidoAposLeitura(new SolicitacaoRepository(contextoB, _relogio), () => criado = Pedir(ordemId, "Motor").Id),
+            _relogio);
+
+        var ex = Assert.Throws<ConclusaoBloqueadaException>(() => workflowB.ConcluirManutencao(sslId, "Laudo", "tec123"));
+
+        Assert.Equal(new PedidoPendenteDto(criado, "Motor", 2, StatusPedidoPeca.Solicitado), Assert.Single(ex.Pendentes));
+        Assert.Equal(StatusSolicitacao.EmManutencao, Ssl(sslId).Status);
+        var ordem = _db.OrdensServico.AsNoTracking().Single(o => o.Id == ordemId);
+        Assert.Null(ordem.Laudo);
+        Assert.Null(ordem.DataConclusao);
+        Assert.Empty(_db.HistoricoStatus.Where(h => h.SolicitacaoId == sslId));
+    }
+
+    [Fact]
+    public void Nao_executar_com_pedido_criado_entre_a_leitura_e_a_gravacao_lanca_conflito_sem_gravar_nada()
+    {
+        var (sslId, ordemId) = Osm();
+        var anterior = Pedir(ordemId, "Correia").Id;
+        int criado = 0;
+        using var contextoB = NovoContexto();
+        var workflowB = new WorkflowService(
+            new RepositorioComPedidoAposLeitura(new SolicitacaoRepository(contextoB, _relogio), () => criado = Pedir(ordemId, "Motor").Id),
+            _relogio);
+
+        Assert.Throws<ConflitoDeConcorrenciaException>(() => workflowB.NaoExecutarManutencao(sslId, "Sem conserto", "tec123"));
+
+        Assert.Equal(StatusSolicitacao.EmManutencao, Ssl(sslId).Status);
+        Assert.Equal(StatusPedidoPeca.Solicitado, Pedido(anterior).Status);
+        Assert.Equal(StatusPedidoPeca.Solicitado, Pedido(criado).Status);
+        Assert.Null(_db.OrdensServico.AsNoTracking().Single(o => o.Id == ordemId).MotivoNaoExecucao);
+        Assert.Empty(_db.HistoricoStatus.Where(h => h.SolicitacaoId == sslId));
+    }
+
+    private sealed class RepositorioComPedidoAposLeitura : ISolicitacaoRepository
+    {
+        private readonly ISolicitacaoRepository _real;
+        private Action? _aposLeitura;
+
+        public RepositorioComPedidoAposLeitura(ISolicitacaoRepository real, Action aposLeitura)
+        {
+            _real = real;
+            _aposLeitura = aposLeitura;
+        }
+
+        public Solicitacao? ObterComOrdemServico(int id)
+        {
+            var lida = _real.ObterComOrdemServico(id);
+            var acao = _aposLeitura;
+            _aposLeitura = null;
+            acao?.Invoke();
+            return lida;
+        }
+
+        public Solicitacao? ObterPorId(int id) => _real.ObterPorId(id);
+        public List<SolicitacaoDto> Listar(string? status, string? matriculaSolicitante) => _real.Listar(status, matriculaSolicitante);
+        public List<SolicitacaoDto> ListarRecebidas() => _real.ListarRecebidas();
+        public SolicitacaoDetalheDto? ObterDetalhe(int id) => _real.ObterDetalhe(id);
+        public List<CandidatoExpiracao> ObterCandidatosExpiracao() => _real.ObterCandidatosExpiracao();
+        public string? UltimoNumeroSsm(string prefixo) => _real.UltimoNumeroSsm(prefixo);
+        public void Salvar(Solicitacao solicitacao, HistoricoStatus historico) => _real.Salvar(solicitacao, historico);
+        public void EmTransacao(Action acao) => _real.EmTransacao(acao);
+        public List<PedidoPendenteDto> ListarPedidosPendentes(int ordemServicoId) => _real.ListarPedidosPendentes(ordemServicoId);
+    }
 }

@@ -185,7 +185,14 @@ namespace CPTM.Manutencao.Api.Services
 
             ordem.Laudo = texto;
             ordem.DataConclusao = _relogio.GetUtcNow().UtcDateTime;
-            Transicionar(solicitacao, StatusSolicitacao.Concluida, ordem.MatriculaTecnico, $"OSM {ordem.Id} concluída.");
+            // Um pedido criado entre a leitura e a gravação também bloqueia: a checagem é refeita no banco, na mesma transação
+            _repositorio.EmTransacao(() =>
+            {
+                Transicionar(solicitacao, StatusSolicitacao.Concluida, ordem.MatriculaTecnico, $"OSM {ordem.Id} concluída.");
+                var pendentesAgora = _repositorio.ListarPedidosPendentes(ordem.Id);
+                if (pendentesAgora.Count > 0)
+                    throw new ConclusaoBloqueadaException(ordem.Id, pendentesAgora);
+            });
             return new EncerramentoOsm(ordem, Array.Empty<int>());
         }
 
@@ -212,7 +219,14 @@ namespace CPTM.Manutencao.Api.Services
 
             ordem.MotivoNaoExecucao = texto;
             ordem.DataConclusao = agora;
-            Transicionar(solicitacao, StatusSolicitacao.NaoExecutada, ordem.MatriculaTecnico, texto);
+            // Um pedido criado entre a leitura e a gravação ficaria pendente numa OSM encerrada: desfaz tudo e responde 409
+            _repositorio.EmTransacao(() =>
+            {
+                Transicionar(solicitacao, StatusSolicitacao.NaoExecutada, ordem.MatriculaTecnico, texto);
+                if (_repositorio.ListarPedidosPendentes(ordem.Id).Count > 0)
+                    throw new ConflitoDeConcorrenciaException(
+                        $"A OSM {ordem.Id} recebeu um pedido de peça ao mesmo tempo. Atualize e tente novamente.");
+            });
             return new EncerramentoOsm(ordem, cancelados);
         }
 

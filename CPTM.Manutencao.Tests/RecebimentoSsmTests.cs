@@ -252,5 +252,7 @@ public sealed class RecebimentoSsmTests : IDisposable
         public List<SolicitacaoDto> ListarRecebidas() => _real.ListarRecebidas();
         public List<CandidatoExpiracao> ObterCandidatosExpiracao() => _real.ObterCandidatosExpiracao();
         public void Salvar(Solicitacao solicitacao, HistoricoStatus historico) => _real.Salvar(solicitacao, historico);
+        public void EmTransacao(Action acao) => _real.EmTransacao(acao);
+        public List<PedidoPendenteDto> ListarPedidosPendentes(int ordemServicoId) => _real.ListarPedidosPendentes(ordemServicoId);
     }
 }

@@ -54,6 +54,8 @@ public sealed class SolicitacaoServiceTests : IDisposable
         public string? UltimoNumeroSsm(string prefixo) => null;
         public List<SolicitacaoDto> ListarRecebidas() => new();
         public void Salvar(Solicitacao solicitacao, HistoricoStatus historico) => throw new InvalidOperationException("falha simulada");
+        public void EmTransacao(Action acao) => acao();
+        public List<PedidoPendenteDto> ListarPedidosPendentes(int ordemServicoId) => new();
     }
 
     [Fact]

@@ -30,5 +30,11 @@ namespace CPTM.Manutencao.Api.Data
         // Status é token de concorrência: se outra operação mudou o status entre a leitura e a gravação,
         // lança ConflitoDeConcorrenciaException e nada é gravado.
         void Salvar(Solicitacao solicitacao, HistoricoStatus historico);
+
+        // Executa a ação numa transação do banco; se ela lançar, nada do que foi gravado dentro dela fica
+        void EmTransacao(Action acao);
+
+        // Pedidos SOLICITADO/ENCAMINHADO da OSM lidos do banco (não do que já está carregado em memória)
+        List<PedidoPendenteDto> ListarPedidosPendentes(int ordemServicoId);
     }
 }
