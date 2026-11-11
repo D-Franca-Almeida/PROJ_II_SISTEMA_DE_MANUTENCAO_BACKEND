@@ -12,6 +12,7 @@ namespace CPTM.Manutencao.Api.Data
         public DbSet<Solicitacao> Solicitacoes => Set<Solicitacao>();
         public DbSet<HistoricoStatus> HistoricoStatus => Set<HistoricoStatus>();
         public DbSet<OrdemServico> OrdensServico => Set<OrdemServico>();
+        public DbSet<PedidoPeca> PedidosPeca => Set<PedidoPeca>();
 
         public DbSet<Usuario> Usuarios => Set<Usuario>();
         public DbSet<Estacao> Estacoes => Set<Estacao>();
@@ -124,6 +125,35 @@ namespace CPTM.Manutencao.Api.Data
                 entidade.HasIndex(o => o.MatriculaTecnico);
 
                 entidade.HasData(DadosIniciais.OrdensServico());
+            });
+
+            modelBuilder.Entity<PedidoPeca>(entidade =>
+            {
+                entidade.ToTable("PEDIDO_PECA");
+                entidade.HasKey(p => p.Id);
+                entidade.Property(p => p.Item).HasMaxLength(200).IsRequired();
+                entidade.Property(p => p.Justificativa).HasMaxLength(500).IsRequired();
+                entidade.Property(p => p.Status).HasMaxLength(20).IsRequired().IsConcurrencyToken();
+                entidade.Property(p => p.MatriculaSolicitante).HasMaxLength(30).IsRequired();
+                entidade.Property(p => p.ObservacaoAlmoxarifado).HasMaxLength(500);
+                entidade.Property(p => p.MatriculaEncaminhamento).HasMaxLength(30);
+                entidade.Property(p => p.MatriculaRecebimento).HasMaxLength(30);
+                entidade.Property(p => p.MatriculaCancelamento).HasMaxLength(30);
+                entidade.Property(p => p.MotivoCancelamento).HasMaxLength(500);
+                entidade.Property(p => p.DataPedido)
+                    .HasConversion(v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+                entidade.Property(p => p.DataEncaminhamento)
+                    .HasConversion(v => v, v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v);
+                entidade.Property(p => p.DataRecebimento)
+                    .HasConversion(v => v, v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v);
+                entidade.Property(p => p.DataCancelamento)
+                    .HasConversion(v => v, v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v);
+                entidade.HasOne(p => p.OrdemServico)
+                    .WithMany(o => o.Pedidos)
+                    .HasForeignKey(p => p.OrdemServicoId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                entidade.HasIndex(p => p.OrdemServicoId);
+                entidade.HasIndex(p => p.Status);
             });
         }
     }

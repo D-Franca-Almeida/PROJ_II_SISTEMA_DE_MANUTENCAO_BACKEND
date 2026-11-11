@@ -32,6 +32,8 @@ builder.Services.AddScoped<ISolicitacaoRepository, SolicitacaoRepository>();
 builder.Services.AddScoped<IWorkflowService, WorkflowService>();
 builder.Services.AddScoped<ICatalogoRepository, CatalogoRepository>();
 builder.Services.AddScoped<IOrdemServicoRepository, OrdemServicoRepository>();
+builder.Services.AddScoped<IPedidoPecaRepository, PedidoPecaRepository>();
+builder.Services.AddScoped<IPedidoPecaService, PedidoPecaService>();
 builder.Services.AddScoped<ISolicitacaoService, SolicitacaoService>();
 
 // Expiração (US-20): prazo e agendamento em Prazos:*; o relógio é injetável (TimeProvider) para os testes.

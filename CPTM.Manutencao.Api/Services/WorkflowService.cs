@@ -22,7 +22,37 @@ namespace CPTM.Manutencao.Api.Services
     {
         public ConflitoDeConcorrenciaException(int id, Exception? interna = null)
             : base($"A solicitação {id} foi alterada por outra operação ao mesmo tempo. Atualize a lista e tente novamente.", interna) { }
+
+        public ConflitoDeConcorrenciaException(string mensagem, Exception? interna = null) : base(mensagem, interna) { }
     }
+
+    public class OrdemServicoNaoEncontradaException : Exception
+    {
+        public OrdemServicoNaoEncontradaException(int id)
+            : base($"Ordem de serviço {id} não encontrada.") { }
+    }
+
+    public class PedidoPecaNaoEncontradoException : Exception
+    {
+        public PedidoPecaNaoEncontradoException(int id)
+            : base($"Pedido de peça {id} não encontrado.") { }
+    }
+
+    // US-23: concluir com pedido SOLICITADO/ENCAMINHADO -> 400 listando os pendentes
+    public class ConclusaoBloqueadaException : RegraDeNegocioException
+    {
+        public ConclusaoBloqueadaException(int ordemServicoId, IReadOnlyList<PedidoPendenteDto> pendentes)
+            : base($"Não é possível concluir a OSM {ordemServicoId}: há {pendentes.Count} pedido(s) de peça pendente(s) " +
+                   $"({string.Join("; ", pendentes.Select(p => $"#{p.Id} {p.Item} x{p.Quantidade} - {p.Status}"))}). " +
+                   "Aguarde a chegada ou cancele os pedidos.")
+        {
+            Pendentes = pendentes;
+        }
+
+        public IReadOnlyList<PedidoPendenteDto> Pendentes { get; }
+    }
+
+    public record EncerramentoOsm(OrdemServico Ordem, IReadOnlyList<int> PedidosCancelados);
 
     public record RecebimentoResultado(int SolicitacaoId, string NumeroSsm, DateTime DataRecebimento);
 
@@ -36,8 +66,9 @@ namespace CPTM.Manutencao.Api.Services
         OrdemServico IniciarManutencao(int id, string matriculaTecnico);
 
         // US-09: EM MANUTENCAO -> CONCLUIDA (laudo) / NAO EXECUTADA (motivo), só pelo técnico dono da OSM
-        OrdemServico ConcluirManutencao(int id, string? laudo, string matriculaTecnico);
-        OrdemServico NaoExecutarManutencao(int id, string? motivo, string matriculaTecnico);
+        // US-23: concluir é bloqueado com pedido pendente; não executar cancela os pendentes na mesma gravação
+        EncerramentoOsm ConcluirManutencao(int id, string? laudo, string matriculaTecnico);
+        EncerramentoOsm NaoExecutarManutencao(int id, string? motivo, string matriculaTecnico);
 
         // US-22: APROVADA -> RECEBIDA (Admin), gera NumeroSsm SSM-AAAA-NNNNNN e DataRecebimento
         RecebimentoResultado ReceberNaOficina(int id, string matriculaAdmin);
@@ -132,9 +163,19 @@ namespace CPTM.Manutencao.Api.Services
         public const int TamanhoMaximoLaudo = 2000;
         public const int TamanhoMaximoMotivoNaoExecucao = 500;
 
-        public OrdemServico ConcluirManutencao(int id, string? laudo, string matriculaTecnico)
+        public const string MotivoCancelamentoAutomatico = "Cancelado automaticamente: OSM não executada.";
+
+        public EncerramentoOsm ConcluirManutencao(int id, string? laudo, string matriculaTecnico)
         {
             var (solicitacao, ordem) = ObterParaEncerrar(id, matriculaTecnico, "concluir");
+
+            var pendentes = ordem.Pedidos
+                .Where(p => StatusPedidoPeca.Pendente(p.Status))
+                .OrderBy(p => p.Id)
+                .Select(p => new PedidoPendenteDto(p.Id, p.Item, p.Quantidade, p.Status))
+                .ToList();
+            if (pendentes.Count > 0)
+                throw new ConclusaoBloqueadaException(ordem.Id, pendentes);
 
             if (string.IsNullOrWhiteSpace(laudo))
                 throw new RegraDeNegocioException("O laudo técnico é obrigatório para concluir a OSM.");
@@ -145,10 +186,10 @@ namespace CPTM.Manutencao.Api.Services
             ordem.Laudo = texto;
             ordem.DataConclusao = _relogio.GetUtcNow().UtcDateTime;
             Transicionar(solicitacao, StatusSolicitacao.Concluida, ordem.MatriculaTecnico, $"OSM {ordem.Id} concluída.");
-            return ordem;
+            return new EncerramentoOsm(ordem, Array.Empty<int>());
         }
 
-        public OrdemServico NaoExecutarManutencao(int id, string? motivo, string matriculaTecnico)
+        public EncerramentoOsm NaoExecutarManutencao(int id, string? motivo, string matriculaTecnico)
         {
             var (solicitacao, ordem) = ObterParaEncerrar(id, matriculaTecnico, "registrar a não execução de");
 
@@ -158,10 +199,21 @@ namespace CPTM.Manutencao.Api.Services
             if (texto.Length > TamanhoMaximoMotivoNaoExecucao)
                 throw new RegraDeNegocioException($"O motivo deve ter no máximo {TamanhoMaximoMotivoNaoExecucao} caracteres.");
 
+            var agora = _relogio.GetUtcNow().UtcDateTime;
+            var cancelados = new List<int>();
+            foreach (var pedido in ordem.Pedidos.Where(p => StatusPedidoPeca.Pendente(p.Status)).OrderBy(p => p.Id))
+            {
+                pedido.Status = StatusPedidoPeca.Cancelado;
+                pedido.DataCancelamento = agora;
+                pedido.MatriculaCancelamento = ordem.MatriculaTecnico;
+                pedido.MotivoCancelamento = MotivoCancelamentoAutomatico;
+                cancelados.Add(pedido.Id);
+            }
+
             ordem.MotivoNaoExecucao = texto;
-            ordem.DataConclusao = _relogio.GetUtcNow().UtcDateTime;
+            ordem.DataConclusao = agora;
             Transicionar(solicitacao, StatusSolicitacao.NaoExecutada, ordem.MatriculaTecnico, texto);
-            return ordem;
+            return new EncerramentoOsm(ordem, cancelados);
         }
 
         // Dono da OSM primeiro (outro técnico -> 403, qualquer que seja o status), depois o status EM MANUTENCAO (400)

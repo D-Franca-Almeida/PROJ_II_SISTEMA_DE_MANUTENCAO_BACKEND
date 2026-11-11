@@ -111,10 +111,46 @@ public sealed class RoteiroSprints123Tests : IClassFixture<CptmApiFactory>
             tecnico.PutAsync("/api/Solicitacoes/1/concluir", CptmApiFactory.Json("{ \"laudo\": \"x\" }"))), "erro");
         TemPropriedade("33", await Passo("33", HttpStatusCode.BadRequest,
             tecnico.PutAsync("/api/Solicitacoes/6/nao-executar", CptmApiFactory.Json("{ }"))), "erro");
+        var osmDaSsl6 = passo24!.Value.GetProperty("ordemServicoId").GetInt32();
+        var passo33a = await Passo("33a", HttpStatusCode.Created, tecnico.PostAsync($"/api/ordens-servico/{osmDaSsl6}/pecas",
+            CptmApiFactory.Json("{ \"item\": \"Motor 220V\", \"quantidade\": 1, \"justificativa\": \"Motor queimado\" }")));
+        var pedidoDaSsl6 = passo33a!.Value.GetProperty("id").GetInt32();
         var passo34 = await Passo("34", HttpStatusCode.OK,
             tecnico.PutAsync("/api/Solicitacoes/6/nao-executar", CptmApiFactory.Json("{ \"motivo\": \"Equipamento sem conserto viavel\" }")));
         Assert.Equal(StatusSolicitacao.NaoExecutada, passo34!.Value.GetProperty("novoStatus").GetString());
+        Assert.Equal(pedidoDaSsl6, Assert.Single(passo34.Value.GetProperty("pedidosCancelados").EnumerateArray()).GetInt32());
+        var passo34a = await Passo("34a", HttpStatusCode.OK, tecnico.GetAsync($"/api/ordens-servico/{osmDaSsl6}/pecas"));
+        Assert.Equal("CANCELADO", Assert.Single(passo34a!.Value.EnumerateArray()).GetProperty("status").GetString());
         TemPropriedade("35", await Passo("35", HttpStatusCode.NotFound,
             tecnico.PutAsync("/api/Solicitacoes/9999/concluir", CptmApiFactory.Json("{ \"laudo\": \"x\" }"))), "erro");
+
+        const string pedido = "{ \"item\": \"Capacitor 100uF\", \"quantidade\": 2, \"justificativa\": \"Capacitor estufado na placa\" }";
+        await Passo("36", HttpStatusCode.Unauthorized, anonimo.PostAsync("/api/ordens-servico/1/pecas", CptmApiFactory.Json(pedido)));
+        await Passo("37", HttpStatusCode.Forbidden, admin.PostAsync("/api/ordens-servico/1/pecas", CptmApiFactory.Json(pedido)));
+        TemPropriedade("38", await Passo("38", HttpStatusCode.BadRequest, tecnico.PostAsync("/api/ordens-servico/1/pecas",
+            CptmApiFactory.Json("{ \"item\": \"Capacitor\", \"quantidade\": 0, \"justificativa\": \"x\" }"))), "erro");
+        var passo39 = await Passo("39", HttpStatusCode.Created, tecnico.PostAsync("/api/ordens-servico/1/pecas", CptmApiFactory.Json(pedido)));
+        Assert.Equal("SOLICITADO", passo39!.Value.GetProperty("status").GetString());
+        var pedidoId = passo39.Value.GetProperty("id").GetInt32();
+        var passo40 = await Passo("40", HttpStatusCode.BadRequest,
+            tecnico.PutAsync("/api/Solicitacoes/10/concluir", CptmApiFactory.Json("{ \"laudo\": \"Placa reparada\" }")));
+        Assert.Equal(pedidoId, Assert.Single(passo40!.Value.GetProperty("pedidosPendentes").EnumerateArray()).GetProperty("id").GetInt32());
+        await Passo("41", HttpStatusCode.Forbidden, comum.GetAsync("/api/pedidos-peca"));
+        var passo42 = await Passo("42", HttpStatusCode.OK, admin.GetAsync("/api/pedidos-peca?status=PENDENTES"));
+        Assert.Contains(passo42!.Value.EnumerateArray(), p => p.GetProperty("id").GetInt32() == pedidoId);
+        TemPropriedade("43", await Passo("43", HttpStatusCode.BadRequest, admin.PutAsync($"/api/pedidos-peca/{pedidoId}/receber", null)), "erro");
+        TemPropriedade("44", await Passo("44", HttpStatusCode.BadRequest,
+            admin.PutAsync($"/api/pedidos-peca/{pedidoId}/encaminhar", CptmApiFactory.Json("{ }"))), "erro");
+        var passo45 = await Passo("45", HttpStatusCode.OK, admin.PutAsync($"/api/pedidos-peca/{pedidoId}/encaminhar",
+            CptmApiFactory.Json("{ \"observacaoAlmoxarifado\": \"Requisicao RM-2026-0042\" }")));
+        Assert.Equal("ENCAMINHADO", passo45!.Value.GetProperty("status").GetString());
+        var passo46 = await Passo("46", HttpStatusCode.OK, admin.PutAsync($"/api/pedidos-peca/{pedidoId}/receber", null));
+        Assert.Equal("RECEBIDO", passo46!.Value.GetProperty("status").GetString());
+        TemPropriedade("47", await Passo("47", HttpStatusCode.BadRequest, tecnico.PutAsync($"/api/pedidos-peca/{pedidoId}/cancelar", null)), "erro");
+        var passo48 = await Passo("48", HttpStatusCode.OK, tecnico.GetAsync("/api/ordens-servico/1/pecas"));
+        Assert.Equal("RECEBIDO", Assert.Single(passo48!.Value.EnumerateArray()).GetProperty("status").GetString());
+        var passo49 = await Passo("49", HttpStatusCode.OK,
+            tecnico.PutAsync("/api/Solicitacoes/10/concluir", CptmApiFactory.Json("{ \"laudo\": \"Placa reparada\" }")));
+        Assert.Equal(StatusSolicitacao.Concluida, passo49!.Value.GetProperty("novoStatus").GetString());
     }
 }

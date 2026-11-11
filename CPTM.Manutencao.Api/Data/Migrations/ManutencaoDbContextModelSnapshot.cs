@@ -457,6 +457,80 @@ namespace CPTM.Manutencao.Api.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("CPTM.Manutencao.Api.Models.PedidoPeca", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("DataCancelamento")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DataEncaminhamento")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DataPedido")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DataRecebimento")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Item")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Justificativa")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MatriculaCancelamento")
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MatriculaEncaminhamento")
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MatriculaRecebimento")
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MatriculaSolicitante")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MotivoCancelamento")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ObservacaoAlmoxarifado")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("OrdemServicoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Quantidade")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Status")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrdemServicoId");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("PEDIDO_PECA", (string)null);
+                });
+
             modelBuilder.Entity("CPTM.Manutencao.Api.Models.Solicitacao", b =>
                 {
                     b.Property<int>("Id")
@@ -721,6 +795,17 @@ namespace CPTM.Manutencao.Api.Data.Migrations
                     b.Navigation("Solicitacao");
                 });
 
+            modelBuilder.Entity("CPTM.Manutencao.Api.Models.PedidoPeca", b =>
+                {
+                    b.HasOne("CPTM.Manutencao.Api.Models.OrdemServico", "OrdemServico")
+                        .WithMany("Pedidos")
+                        .HasForeignKey("OrdemServicoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("OrdemServico");
+                });
+
             modelBuilder.Entity("CPTM.Manutencao.Api.Models.Solicitacao", b =>
                 {
                     b.HasOne("CPTM.Manutencao.Api.Models.Equipamento", "Equipamento")
@@ -729,6 +814,11 @@ namespace CPTM.Manutencao.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Equipamento");
+                });
+
+            modelBuilder.Entity("CPTM.Manutencao.Api.Models.OrdemServico", b =>
+                {
+                    b.Navigation("Pedidos");
                 });
 
             modelBuilder.Entity("CPTM.Manutencao.Api.Models.Solicitacao", b =>

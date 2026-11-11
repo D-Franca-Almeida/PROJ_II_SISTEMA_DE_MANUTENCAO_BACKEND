@@ -11,6 +11,7 @@ namespace CPTM.Manutencao.Api.Models
         public DateTime? DataConclusao { get; set; }
         public string? Laudo { get; set; }
         public string? MotivoNaoExecucao { get; set; }
+        public List<PedidoPeca> Pedidos { get; set; } = new();
     }
 
     public record OrdemServicoDto(

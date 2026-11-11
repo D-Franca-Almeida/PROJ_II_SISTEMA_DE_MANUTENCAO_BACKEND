@@ -273,11 +273,11 @@ namespace CPTM.Manutencao.Api.Controllers
                 "Manutenção registrada como não executada. OSM encerrada.", StatusSolicitacao.NaoExecutada);
         }
 
-        private IActionResult Encerrar(int id, Func<OrdemServico> acao, string mensagem, string novoStatus)
+        private IActionResult Encerrar(int id, Func<EncerramentoOsm> acao, string mensagem, string novoStatus)
         {
             try
             {
-                var ordem = acao();
+                var (ordem, pedidosCancelados) = acao();
                 return Ok(new
                 {
                     mensagem,
@@ -287,6 +287,7 @@ namespace CPTM.Manutencao.Api.Controllers
                     dataConclusao = ordem.DataConclusao,
                     laudo = ordem.Laudo,
                     motivoNaoExecucao = ordem.MotivoNaoExecucao,
+                    pedidosCancelados,
                     novoStatus
                 });
             }
@@ -297,6 +298,10 @@ namespace CPTM.Manutencao.Api.Controllers
             catch (ConflitoDeConcorrenciaException ex)
             {
                 return Conflict(new { erro = ex.Message });
+            }
+            catch (ConclusaoBloqueadaException ex)
+            {
+                return BadRequest(new { erro = ex.Message, pedidosPendentes = ex.Pendentes });
             }
             catch (RegraDeNegocioException ex)
             {
