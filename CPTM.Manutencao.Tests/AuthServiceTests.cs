@@ -81,4 +81,46 @@ public sealed class AuthServiceTests : IDisposable
         Assert.Equal("Tecnico", perfis["tec123"]);
         Assert.Equal("Comum", perfis["comum123"]);
     }
+    [Fact]
+    public void Matricula_inexistente_faz_o_mesmo_trabalho_de_hash_que_senha_errada()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:Key"] = "chave-de-teste-com-mais-de-32-caracteres-123456" })
+            .Build();
+        var contador = new HasherContador();
+        var servico = new AuthService(config, _db, contador);
+        servico.RealizarLogin("aquecimento", "x");
+
+        contador.Zerar();
+        servico.RealizarLogin("admin123", "errada");
+        var (hashesSenhaErrada, verificacoesSenhaErrada) = (contador.Hashes, contador.Verificacoes);
+
+        contador.Zerar();
+        servico.RealizarLogin("naoexiste", "errada");
+
+        Assert.Equal(hashesSenhaErrada, contador.Hashes);
+        Assert.Equal(verificacoesSenhaErrada, contador.Verificacoes);
+        Assert.Equal(1, contador.Verificacoes);
+    }
+
+    private sealed class HasherContador : IPasswordHasher<Usuario>
+    {
+        private readonly PasswordHasher<Usuario> _real = new();
+        public int Hashes { get; private set; }
+        public int Verificacoes { get; private set; }
+
+        public void Zerar() => (Hashes, Verificacoes) = (0, 0);
+
+        public string HashPassword(Usuario user, string password)
+        {
+            Hashes++;
+            return _real.HashPassword(user, password);
+        }
+
+        public PasswordVerificationResult VerifyHashedPassword(Usuario user, string hashedPassword, string providedPassword)
+        {
+            Verificacoes++;
+            return _real.VerifyHashedPassword(user, hashedPassword, providedPassword);
+        }
+    }
 }
