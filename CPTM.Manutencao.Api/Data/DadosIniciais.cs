@@ -65,6 +65,13 @@ namespace CPTM.Manutencao.Api.Data
             Nova(12, "Escada rolante com ruído (corrigida)", StatusSolicitacao.Reenviada, 5)
         };
 
+        // US-22: SSLs que já passaram pela recepção física têm número SSM
+        private static readonly Dictionary<int, string> SsmDaCarga = new()
+        {
+            [10] = "SSM-2026-000001",
+            [11] = "SSM-2026-000002"
+        };
+
         // Histórico coerente com a massa: abertura (nulo -> SOLICITADA) de todas e, para as que já
         // estão em outro status, uma linha de carga inicial até o status atual.
         public static HistoricoStatus[] Historico()
@@ -109,7 +116,9 @@ namespace CPTM.Manutencao.Api.Data
                 Status = status,
                 EquipamentoId = equipamentoId,
                 DataAbertura = new DateTime(2026, 11, 1, 12, 0, 0, DateTimeKind.Utc),
-                MatriculaSolicitante = matriculaSolicitante
+                MatriculaSolicitante = matriculaSolicitante,
+                NumeroSsm = SsmDaCarga.GetValueOrDefault(id),
+                DataRecebimento = SsmDaCarga.ContainsKey(id) ? new DateTime(2026, 11, 1, 12, 1, 0, DateTimeKind.Utc) : null
             };
     }
 }

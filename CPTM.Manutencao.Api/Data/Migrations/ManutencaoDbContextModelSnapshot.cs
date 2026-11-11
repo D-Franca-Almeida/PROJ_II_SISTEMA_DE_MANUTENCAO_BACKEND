@@ -413,6 +413,9 @@ namespace CPTM.Manutencao.Api.Data.Migrations
                     b.Property<DateTime?>("DataInicioManutencao")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("DataRecebimento")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Descricao")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -438,7 +441,12 @@ namespace CPTM.Manutencao.Api.Data.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("NumeroSsm")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Status")
+                        .IsConcurrencyToken()
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("TEXT");
@@ -448,6 +456,9 @@ namespace CPTM.Manutencao.Api.Data.Migrations
                     b.HasIndex("EquipamentoId");
 
                     b.HasIndex("MatriculaSolicitante");
+
+                    b.HasIndex("NumeroSsm")
+                        .IsUnique();
 
                     b.HasIndex("Status");
 
@@ -539,18 +550,22 @@ namespace CPTM.Manutencao.Api.Data.Migrations
                         {
                             Id = 10,
                             DataAbertura = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
+                            DataRecebimento = new DateTime(2026, 11, 1, 12, 1, 0, 0, DateTimeKind.Utc),
                             Descricao = "Bebedouro sem pressão",
                             EquipamentoId = 14,
                             MatriculaSolicitante = "comum123",
+                            NumeroSsm = "SSM-2026-000001",
                             Status = "EM MANUTENCAO"
                         },
                         new
                         {
                             Id = 11,
                             DataAbertura = new DateTime(2026, 11, 1, 12, 0, 0, 0, DateTimeKind.Utc),
+                            DataRecebimento = new DateTime(2026, 11, 1, 12, 1, 0, 0, DateTimeKind.Utc),
                             Descricao = "Piso solto na estação",
                             EquipamentoId = 9,
                             MatriculaSolicitante = "comum123",
+                            NumeroSsm = "SSM-2026-000002",
                             Status = "CONCLUIDA"
                         },
                         new

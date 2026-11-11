@@ -50,7 +50,7 @@ namespace CPTM.Manutencao.Api.Data
             var r = Mapear(s, DiasParaExpirar(s, DatasDeEntradaNoStatus(new[] { s })));
             return new SolicitacaoDetalheDto(r.Id, r.Status, r.Descricao, r.FotoUrl, r.DataAbertura,
                 r.MatriculaSolicitante, r.Equipamento, r.Estacao, r.MotivoDevolucao,
-                s.MatriculaTecnico, s.DataInicioManutencao, historico, r.DiasParaExpirar);
+                s.MatriculaTecnico, s.DataInicioManutencao, historico, r.DiasParaExpirar, s.NumeroSsm, s.DataRecebimento);
         }
 
         public List<CandidatoExpiracao> ObterCandidatosExpiracao()
@@ -92,7 +92,16 @@ namespace CPTM.Manutencao.Api.Data
             s.Equipamento is null ? null : new EquipamentoDto(s.Equipamento.Id, s.Equipamento.EstacaoId, s.Equipamento.Descricao, s.Equipamento.Patrimonio),
             s.Equipamento?.Estacao is null ? null : new EstacaoDto(s.Equipamento.Estacao.Id, s.Equipamento.Estacao.Nome, s.Equipamento.Estacao.Linha),
             s.MotivoDevolucao,
-            diasParaExpirar);
+            diasParaExpirar,
+            s.NumeroSsm,
+            s.DataRecebimento);
+
+        public string? UltimoNumeroSsm(string prefixo) =>
+            _contexto.Solicitacoes.AsNoTracking()
+                .Where(s => s.NumeroSsm != null && s.NumeroSsm.StartsWith(prefixo))
+                .OrderByDescending(s => s.NumeroSsm)
+                .Select(s => s.NumeroSsm)
+                .FirstOrDefault();
 
         public void Salvar(Solicitacao solicitacao, HistoricoStatus historico)
         {
@@ -104,12 +113,20 @@ namespace CPTM.Manutencao.Api.Data
                     _contexto.Solicitacoes.Update(solicitacao);
             }
 
+            if (solicitacao.Id != 0 && historico.StatusAnterior is not null)
+                _contexto.Entry(solicitacao).Property(s => s.Status).OriginalValue = historico.StatusAnterior;
+
             historico.Solicitacao = solicitacao;
             _contexto.HistoricoStatus.Add(historico);
 
             try
             {
                 _contexto.SaveChanges();
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                _contexto.ChangeTracker.Clear();
+                throw new ConflitoDeConcorrenciaException(solicitacao.Id, ex);
             }
             catch
             {

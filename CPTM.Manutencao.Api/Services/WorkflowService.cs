@@ -1,5 +1,6 @@
 using CPTM.Manutencao.Api.Data;
 using CPTM.Manutencao.Api.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace CPTM.Manutencao.Api.Services
 {
@@ -16,6 +17,15 @@ namespace CPTM.Manutencao.Api.Services
         public RegraDeNegocioException(string message) : base(message) { }
     }
 
+    // Outra operação mudou o status da SSL entre a leitura e a gravação (ex.: dois técnicos assumindo ao mesmo tempo) -> 409
+    public class ConflitoDeConcorrenciaException : Exception
+    {
+        public ConflitoDeConcorrenciaException(int id, Exception? interna = null)
+            : base($"A solicitação {id} foi alterada por outra operação ao mesmo tempo. Atualize a lista e tente novamente.", interna) { }
+    }
+
+    public record RecebimentoResultado(int SolicitacaoId, string NumeroSsm, DateTime DataRecebimento);
+
     // 1. A Interface (O Contrato)
     public interface IWorkflowService
     {
@@ -23,6 +33,9 @@ namespace CPTM.Manutencao.Api.Services
         void DevolverTriagem(int id, string motivo, string matriculaLogada);
         void CancelarTriagem(int id, string matriculaLogada, string perfilLogado);
         void IniciarManutencao(int id, string matriculaTecnico);
+
+        // US-22: APROVADA -> RECEBIDA (Admin), gera NumeroSsm SSM-AAAA-NNNNNN e DataRecebimento
+        RecebimentoResultado ReceberNaOficina(int id, string matriculaAdmin);
 
         // US-16: ponto único de mudança de status. Grava exatamente 1 linha em HistoricoStatus.
         // Solicitação nova (Id = 0) registra a abertura com StatusAnterior nulo.
@@ -97,6 +110,47 @@ namespace CPTM.Manutencao.Api.Services
             solicitacao.MatriculaTecnico = matriculaTecnico.Trim();
             solicitacao.DataInicioManutencao = _relogio.GetUtcNow().UtcDateTime;
             Transicionar(solicitacao, StatusSolicitacao.EmManutencao, solicitacao.MatriculaTecnico);
+        }
+
+        public RecebimentoResultado ReceberNaOficina(int id, string matriculaAdmin)
+        {
+            lock (TravaSsm)
+            {
+                for (var tentativa = 1; ; tentativa++)
+                {
+                    var solicitacao = _repositorio.ObterPorId(id)
+                        ?? throw new SolicitacaoNaoEncontradaException(id);
+
+                    if (solicitacao.Status != StatusSolicitacao.Aprovada)
+                        throw new RegraDeNegocioException(
+                            $"Transição inválida: só é possível receber na oficina uma solicitação APROVADA (status atual: {solicitacao.Status}).");
+
+                    var agora = _relogio.GetUtcNow().UtcDateTime;
+                    solicitacao.NumeroSsm = ProximoNumeroSsm(agora.Year);
+                    solicitacao.DataRecebimento = agora;
+                    try
+                    {
+                        Transicionar(solicitacao, StatusSolicitacao.Recebida, matriculaAdmin, $"SSM {solicitacao.NumeroSsm} gerada.");
+                        return new RecebimentoResultado(solicitacao.Id, solicitacao.NumeroSsm, agora);
+                    }
+                    catch (DbUpdateException) when (tentativa < TentativasSsm)
+                    {
+                    }
+                }
+            }
+        }
+
+        public const int TentativasSsm = 3;
+        private static readonly object TravaSsm = new();
+
+        private string ProximoNumeroSsm(int ano)
+        {
+            var prefixo = $"SSM-{ano}-";
+            var ultimo = _repositorio.UltimoNumeroSsm(prefixo);
+            var sequencial = ultimo is null ? 1 : int.Parse(ultimo[prefixo.Length..]) + 1;
+            if (sequencial > 999999)
+                throw new RegraDeNegocioException($"Limite anual de números SSM atingido para {ano}.");
+            return $"{prefixo}{sequencial:D6}";
         }
 
         public void Transicionar(Solicitacao solicitacao, string novoStatus, string matricula, string? observacao = null)

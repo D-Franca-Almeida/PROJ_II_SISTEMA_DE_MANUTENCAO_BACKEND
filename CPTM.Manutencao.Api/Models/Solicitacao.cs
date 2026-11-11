@@ -12,6 +12,8 @@ namespace CPTM.Manutencao.Api.Models
         public DateTime? DataInicioManutencao { get; set; }
         public DateTime DataAbertura { get; set; }
         public string? FotoUrl { get; set; }
+        public string? NumeroSsm { get; set; }
+        public DateTime? DataRecebimento { get; set; }
         public int? EquipamentoId { get; set; }
         public Equipamento? Equipamento { get; set; }
     }

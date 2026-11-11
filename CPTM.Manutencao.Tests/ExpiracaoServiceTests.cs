@@ -214,6 +214,7 @@ public sealed class ExpiracaoServiceTests : IDisposable
         public void DevolverTriagem(int id, string motivo, string matriculaLogada) => _real.DevolverTriagem(id, motivo, matriculaLogada);
         public void CancelarTriagem(int id, string matriculaLogada, string perfilLogado) => _real.CancelarTriagem(id, matriculaLogada, perfilLogado);
         public void IniciarManutencao(int id, string matriculaTecnico) => _real.IniciarManutencao(id, matriculaTecnico);
+        public RecebimentoResultado ReceberNaOficina(int id, string matriculaAdmin) => _real.ReceberNaOficina(id, matriculaAdmin);
 
         public void Transicionar(Solicitacao solicitacao, string novoStatus, string matricula, string? observacao = null)
         {
