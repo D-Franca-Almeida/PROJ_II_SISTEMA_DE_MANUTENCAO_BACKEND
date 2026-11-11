@@ -68,10 +68,11 @@ namespace CPTM.Manutencao.Api.Services
             if (perfilLogado == "Comum" && solicitacao.MatriculaSolicitante != matriculaLogada)
                 throw new UnauthorizedAccessException("Você só tem permissão para cancelar as suas próprias solicitações.");
 
-            // REGRA 2: Bloquear cancelamento tardio (só na fase de triagem/correção)
+            // REGRA 2: Bloquear cancelamento tardio (US-19: permitido até APROVADA, antes de o equipamento chegar à oficina)
             if (solicitacao.Status != StatusSolicitacao.Solicitada &&
                 solicitacao.Status != StatusSolicitacao.Reenviada &&
-                solicitacao.Status != StatusSolicitacao.Devolvida)
+                solicitacao.Status != StatusSolicitacao.Devolvida &&
+                solicitacao.Status != StatusSolicitacao.Aprovada)
                 throw new RegraDeNegocioException(
                     $"Não é possível cancelar uma solicitação com status {solicitacao.Status}.");
 
