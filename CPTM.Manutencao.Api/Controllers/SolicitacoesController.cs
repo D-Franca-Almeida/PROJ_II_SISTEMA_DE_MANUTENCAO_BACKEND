@@ -93,6 +93,37 @@ namespace CPTM.Manutencao.Api.Controllers
             }
         }
 
+        // REENVIAR SSL devolvida (Apenas Comum dono) - US-06
+        [HttpPut("{id:int}/reenviar")]
+        [Authorize(Policy = "RequerPerfilComum")]
+        [Consumes("multipart/form-data")]
+        [RequestSizeLimit(SolicitacaoService.TamanhoMaximoRequisicao)]
+        [RequestFormLimits(MultipartBodyLengthLimit = SolicitacaoService.TamanhoMaximoRequisicao)]
+        [LimiteCorpo(SolicitacaoService.TamanhoMaximoRequisicao, "A foto deve ter no máximo 5 MB.")]
+        public async Task<IActionResult> Reenviar(int id, [FromForm] ReenviarSolicitacaoRequest requisicao)
+        {
+            var matricula = User.FindFirst("Matricula")?.Value;
+            if (string.IsNullOrEmpty(matricula))
+                return Forbid();
+
+            try
+            {
+                return Ok(await _solicitacaoService.ReenviarAsync(id, requisicao, matricula));
+            }
+            catch (SolicitacaoNaoEncontradaException ex)
+            {
+                return NotFound(new { erro = ex.Message });
+            }
+            catch (RegraDeNegocioException ex)
+            {
+                return BadRequest(new { erro = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+        }
+
         // 🟢 APROVAR (Apenas Administrativo)
         [HttpPut("{id}/aprovar")]
         [Authorize(Policy = "RequerPerfilAdmin")]
