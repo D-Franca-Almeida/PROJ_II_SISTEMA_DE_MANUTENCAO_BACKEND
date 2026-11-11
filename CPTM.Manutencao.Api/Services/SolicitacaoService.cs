@@ -7,6 +7,8 @@ namespace CPTM.Manutencao.Api.Services
     {
         Task<SolicitacaoDto> CriarAsync(CriarSolicitacaoRequest requisicao, string matricula);
 
+        Task<SolicitacaoDto> ReenviarAsync(int id, ReenviarSolicitacaoRequest requisicao, string matricula);
+
         List<SolicitacaoDto> Listar(string? status);
 
         List<SolicitacaoDto> ListarDoSolicitante(string matricula);
@@ -60,15 +62,7 @@ namespace CPTM.Manutencao.Api.Services
             var foto = requisicao.Foto;
             if (foto is null || foto.Length == 0)
                 throw new RegraDeNegocioException("A foto é obrigatória.");
-            if (foto.Length > TamanhoMaximoFoto)
-                throw new RegraDeNegocioException("A foto deve ter no máximo 5 MB.");
-
-            var extensao = Path.GetExtension(foto.FileName);
-            if (!TiposPermitidos.TryGetValue(extensao, out var contentTypes) ||
-                !contentTypes.Contains(foto.ContentType, StringComparer.OrdinalIgnoreCase))
-                throw new RegraDeNegocioException("A foto deve ser JPG, JPEG ou PNG.");
-            if (!await ConteudoCorrespondeAsync(foto, foto.ContentType.Equals("image/png", StringComparison.OrdinalIgnoreCase) ? AssinaturaPng : AssinaturaJpeg))
-                throw new RegraDeNegocioException("O conteúdo da foto não é uma imagem JPG ou PNG válida.");
+            var extensao = await ValidarFotoAsync(foto);
 
             var url = await _fotos.SalvarAsync(foto, extensao.ToLowerInvariant());
             try
@@ -100,6 +94,51 @@ namespace CPTM.Manutencao.Api.Services
             }
         }
 
+        public async Task<SolicitacaoDto> ReenviarAsync(int id, ReenviarSolicitacaoRequest requisicao, string matricula)
+        {
+            var solicitacao = _solicitacoes.ObterPorId(id) ?? throw new SolicitacaoNaoEncontradaException(id);
+            if (solicitacao.MatriculaSolicitante != matricula)
+                throw new UnauthorizedAccessException();
+            if (solicitacao.Status != StatusSolicitacao.Devolvida)
+                throw new RegraDeNegocioException(
+                    $"Só é possível reenviar uma solicitação DEVOLVIDA (status atual: {solicitacao.Status}).");
+
+            var descricao = requisicao.Descricao?.Trim();
+            if (descricao is { Length: > TamanhoMaximoDescricao })
+                throw new RegraDeNegocioException($"A descrição deve ter no máximo {TamanhoMaximoDescricao} caracteres.");
+            var descricaoAlterada = !string.IsNullOrEmpty(descricao) && descricao != solicitacao.Descricao;
+
+            var foto = requisicao.Foto is { Length: > 0 } ? requisicao.Foto : null;
+            if (!descricaoAlterada && foto is null)
+                throw new RegraDeNegocioException("Faça a correção antes de reenviar: altere a descrição ou anexe uma nova foto.");
+
+            string? extensao = null;
+            if (foto is not null)
+                extensao = await ValidarFotoAsync(foto);
+
+            var fotoAnterior = solicitacao.FotoUrl;
+            string? novaUrl = null;
+            if (foto is not null)
+                novaUrl = await _fotos.SalvarAsync(foto, extensao!.ToLowerInvariant());
+            try
+            {
+                if (descricaoAlterada) solicitacao.Descricao = descricao!;
+                if (novaUrl is not null) solicitacao.FotoUrl = novaUrl;
+                solicitacao.MotivoDevolucao = null;
+                _workflow.Transicionar(solicitacao, StatusSolicitacao.Reenviada, matricula);
+            }
+            catch
+            {
+                if (novaUrl is not null) _fotos.Excluir(novaUrl);
+                throw;
+            }
+
+            if (novaUrl is not null && !string.IsNullOrEmpty(fotoAnterior))
+                _fotos.Excluir(fotoAnterior);
+
+            return _solicitacoes.Listar(null, matricula).First(x => x.Id == id);
+        }
+
         public List<SolicitacaoDto> Listar(string? status)
         {
             string? normalizado = null;
@@ -122,6 +161,20 @@ namespace CPTM.Manutencao.Api.Services
             if (!veQualquer && detalhe.MatriculaSolicitante != matricula)
                 throw new UnauthorizedAccessException();
             return detalhe;
+        }
+
+        private static async Task<string> ValidarFotoAsync(IFormFile foto)
+        {
+            if (foto.Length > TamanhoMaximoFoto)
+                throw new RegraDeNegocioException("A foto deve ter no máximo 5 MB.");
+
+            var extensao = Path.GetExtension(foto.FileName);
+            if (!TiposPermitidos.TryGetValue(extensao, out var contentTypes) ||
+                !contentTypes.Contains(foto.ContentType, StringComparer.OrdinalIgnoreCase))
+                throw new RegraDeNegocioException("A foto deve ser JPG, JPEG ou PNG.");
+            if (!await ConteudoCorrespondeAsync(foto, foto.ContentType.Equals("image/png", StringComparison.OrdinalIgnoreCase) ? AssinaturaPng : AssinaturaJpeg))
+                throw new RegraDeNegocioException("O conteúdo da foto não é uma imagem JPG ou PNG válida.");
+            return extensao;
         }
 
         private static async Task<bool> ConteudoCorrespondeAsync(IFormFile foto, byte[] assinatura)
