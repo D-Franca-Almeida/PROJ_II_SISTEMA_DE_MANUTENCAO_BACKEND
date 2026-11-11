@@ -33,6 +33,42 @@ namespace CPTM.Manutencao.Api.Controllers
             }
         }
 
+        // MINHAS SSLs (qualquer perfil autenticado; apenas as do próprio solicitante) - US-18
+        [HttpGet("minhas")]
+        [Authorize]
+        public IActionResult Minhas()
+        {
+            var matricula = User.FindFirst("Matricula")?.Value;
+            if (string.IsNullOrEmpty(matricula))
+                return Forbid();
+
+            return Ok(_solicitacaoService.ListarDoSolicitante(matricula));
+        }
+
+        // DETALHE (Comum: apenas a própria | Administrativo e Técnico: qualquer uma) - US-18
+        [HttpGet("{id:int}")]
+        [Authorize]
+        public IActionResult Obter(int id)
+        {
+            var matricula = User.FindFirst("Matricula")?.Value;
+            var perfil = User.FindFirst("Perfil")?.Value;
+            if (string.IsNullOrEmpty(matricula) || string.IsNullOrEmpty(perfil))
+                return Forbid();
+
+            try
+            {
+                return Ok(_solicitacaoService.ObterDetalhe(id, matricula, perfil));
+            }
+            catch (SolicitacaoNaoEncontradaException ex)
+            {
+                return NotFound(new { erro = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+        }
+
         // ABRIR SSL com foto (Apenas Comum) - US-03
         [HttpPost]
         [Authorize(Policy = "RequerPerfilComum")]
