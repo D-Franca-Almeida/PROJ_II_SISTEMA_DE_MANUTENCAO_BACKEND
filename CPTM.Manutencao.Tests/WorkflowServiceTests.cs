@@ -97,6 +97,18 @@ public sealed class WorkflowServiceTests : IDisposable
     }
 
     [Fact]
+    public void Cancelar_Aprovada_PeloSolicitante_GravaUmaLinha()
+    {
+        var s = Criar(StatusSolicitacao.Aprovada, solicitante: "1001");
+
+        _servico.CancelarTriagem(s.Id, "1001", "Comum");
+
+        var h = Assert.Single(Historico(s.Id));
+        Assert.Equal(StatusSolicitacao.Aprovada, h.StatusAnterior);
+        Assert.Equal(StatusSolicitacao.Cancelada, h.StatusNovo);
+    }
+
+    [Fact]
     public void IniciarManutencao_GravaUmaLinhaComMatriculaDoTecnico()
     {
         var s = Criar(StatusSolicitacao.Aprovada);
@@ -130,14 +142,14 @@ public sealed class WorkflowServiceTests : IDisposable
     [Fact]
     public void TransicaoInvalida_NaoGravaHistorico()
     {
-        var s = Criar(StatusSolicitacao.Aprovada);
+        var s = Criar(StatusSolicitacao.EmManutencao);
 
         Assert.Throws<RegraDeNegocioException>(() => _servico.AprovarTriagem(s.Id, "2002"));
         Assert.Throws<RegraDeNegocioException>(() => _servico.DevolverTriagem(s.Id, "x", "2002"));
         Assert.Throws<RegraDeNegocioException>(() => _servico.CancelarTriagem(s.Id, "1001", "Administrativo"));
 
         Assert.Empty(Historico(s.Id));
-        Assert.Equal(StatusSolicitacao.Aprovada, _db.Solicitacoes.AsNoTracking().Single(x => x.Id == s.Id).Status);
+        Assert.Equal(StatusSolicitacao.EmManutencao, _db.Solicitacoes.AsNoTracking().Single(x => x.Id == s.Id).Status);
     }
 
     [Fact]
