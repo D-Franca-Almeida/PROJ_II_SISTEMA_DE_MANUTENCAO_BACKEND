@@ -313,13 +313,54 @@ namespace CPTM.Manutencao.Api.Controllers
             }
         }
 
+        // 📦 US-10 (caminho 1): Admin libera para retirada (CONCLUIDA -> AGUARDANDO RETIRADA)
+        [HttpPut("{id:int}/aguardar-retirada")]
+        [Authorize(Policy = "RequerPerfilAdmin")]
+        public IActionResult DisponibilizarParaRetirada(int id, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] DestinoDto? dto = null)
+        {
+            var matricula = User.FindFirst("Matricula")?.Value;
+            if (string.IsNullOrEmpty(matricula))
+                return Forbid();
+
+            return Executar(() => _workflowService.DisponibilizarParaRetirada(id, matricula, dto?.Observacao),
+                "Equipamento liberado e aguardando retirada pelo solicitante.", StatusSolicitacao.AguardandoRetirada);
+        }
+
+        // 🗑️ US-10 (caminho 2): Admin classifica como Sem Reparo (CONCLUIDA -> SEM REPARO)
+        [HttpPut("{id:int}/sem-reparo")]
+        [Authorize(Policy = "RequerPerfilAdmin")]
+        public IActionResult CondenarSemReparo(int id, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] DestinoDto? dto = null)
+        {
+            var matricula = User.FindFirst("Matricula")?.Value;
+            if (string.IsNullOrEmpty(matricula))
+                return Forbid();
+
+            return Executar(() => _workflowService.CondenarSemReparo(id, matricula, dto?.Observacao),
+                "Equipamento classificado como Sem Reparo (baixa técnica).", StatusSolicitacao.SemReparo);
+        }
+
+        // 🤝 US-11: Protocolo de retirada (AGUARDANDO RETIRADA -> RETIRADO)
+        [HttpPut("{id:int}/retirar")]
+        [Authorize(Policy = "RequerPerfilAdmin")]
+        public IActionResult RegistrarRetirada(int id, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] ProtocoloRetiradaDto? dto)
+        {
+            var matricula = User.FindFirst("Matricula")?.Value;
+            if (string.IsNullOrEmpty(matricula))
+                return Forbid();
+
+            return Executar(() => _workflowService.RegistrarRetirada(id, matricula, dto?.IdentificacaoRecebedor ?? string.Empty),
+                "Protocolo de retirada registrado com sucesso. Ciclo encerrado.", StatusSolicitacao.Retirado);
+        }
+
         // Traduz as exceções do serviço em respostas HTTP (o Controller não tem regra de negócio)
-        private IActionResult Executar(Action acao, string mensagemSucesso)
+        private IActionResult Executar(Action acao, string mensagemSucesso, string? novoStatus = null)
         {
             try
             {
                 acao();
-                return Ok(new { message = mensagemSucesso });
+                return novoStatus is null
+                    ? Ok(new { message = mensagemSucesso })
+                    : Ok(new { message = mensagemSucesso, novoStatus });
             }
             catch (SolicitacaoNaoEncontradaException ex)
             {

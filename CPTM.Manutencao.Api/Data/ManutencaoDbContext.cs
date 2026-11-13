@@ -70,6 +70,10 @@ namespace CPTM.Manutencao.Api.Data
                 entidade.Property(s => s.FotoUrl).HasMaxLength(300);
                 entidade.Property(s => s.NumeroSsm).HasMaxLength(20);
                 entidade.HasIndex(s => s.NumeroSsm).IsUnique();
+                entidade.Property(s => s.ObservacaoDestino).HasMaxLength(500);
+                entidade.Property(s => s.IdentificacaoRetirada).HasMaxLength(100);
+                entidade.Property(s => s.DataRetirada)
+                    .HasConversion(v => v, v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v);
                 entidade.Property(s => s.DataRecebimento)
                     .HasConversion(v => v, v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v);
                 entidade.Property(s => s.DataAbertura)

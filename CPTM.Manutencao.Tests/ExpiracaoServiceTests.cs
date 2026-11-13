@@ -217,6 +217,9 @@ public sealed class ExpiracaoServiceTests : IDisposable
         public RecebimentoResultado ReceberNaOficina(int id, string matriculaAdmin) => _real.ReceberNaOficina(id, matriculaAdmin);
         public EncerramentoOsm ConcluirManutencao(int id, string? laudo, string matriculaTecnico) => _real.ConcluirManutencao(id, laudo, matriculaTecnico);
         public EncerramentoOsm NaoExecutarManutencao(int id, string? motivo, string matriculaTecnico) => _real.NaoExecutarManutencao(id, motivo, matriculaTecnico);
+        public void DisponibilizarParaRetirada(int id, string matriculaAdmin, string? observacao = null) => _real.DisponibilizarParaRetirada(id, matriculaAdmin, observacao);
+        public void CondenarSemReparo(int id, string matriculaAdmin, string? observacao = null) => _real.CondenarSemReparo(id, matriculaAdmin, observacao);
+        public void RegistrarRetirada(int id, string matriculaAdmin, string identificacaoRecebedor) => _real.RegistrarRetirada(id, matriculaAdmin, identificacaoRecebedor);
 
         public void Transicionar(Solicitacao solicitacao, string novoStatus, string matricula, string? observacao = null)
         {

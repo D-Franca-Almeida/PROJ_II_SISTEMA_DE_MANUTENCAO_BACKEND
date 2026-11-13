@@ -14,6 +14,11 @@ namespace CPTM.Manutencao.Api.Models
         public string? FotoUrl { get; set; }
         public string? NumeroSsm { get; set; }
         public DateTime? DataRecebimento { get; set; }
+
+        // US-10 (destino) e US-11 (protocolo de retirada)
+        public string? ObservacaoDestino { get; set; }
+        public string? IdentificacaoRetirada { get; set; } // CPF ou matrícula de quem buscou
+        public DateTime? DataRetirada { get; set; }
         public int? EquipamentoId { get; set; }
         public Equipamento? Equipamento { get; set; }
         public OrdemServico? OrdemServico { get; set; }

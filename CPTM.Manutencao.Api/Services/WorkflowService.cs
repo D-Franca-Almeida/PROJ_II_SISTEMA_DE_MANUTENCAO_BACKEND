@@ -70,6 +70,13 @@ namespace CPTM.Manutencao.Api.Services
         EncerramentoOsm ConcluirManutencao(int id, string? laudo, string matriculaTecnico);
         EncerramentoOsm NaoExecutarManutencao(int id, string? motivo, string matriculaTecnico);
 
+        // US-10 (Admin): destino da SSL depois da OSM concluída. CONCLUIDA -> AGUARDANDO RETIRADA | SEM REPARO
+        void DisponibilizarParaRetirada(int id, string matriculaAdmin, string? observacao = null);
+        void CondenarSemReparo(int id, string matriculaAdmin, string? observacao = null);
+
+        // US-11 (Admin): protocolo de retirada. AGUARDANDO RETIRADA -> RETIRADO, com CPF/matrícula de quem retirou
+        void RegistrarRetirada(int id, string matriculaAdmin, string identificacaoRecebedor);
+
         // US-22: APROVADA -> RECEBIDA (Admin), gera NumeroSsm SSM-AAAA-NNNNNN e DataRecebimento
         RecebimentoResultado ReceberNaOficina(int id, string matriculaAdmin);
 
@@ -310,6 +317,56 @@ namespace CPTM.Manutencao.Api.Services
 
             solicitacao.Status = novoStatus;
             _repositorio.Salvar(solicitacao, historico);
+        }
+
+        public const int TamanhoMaximoObservacao = 500;
+        public const int TamanhoMaximoIdentificacao = 100;
+
+        // US-10 (caminho 1): CONCLUIDA -> AGUARDANDO RETIRADA
+        public void DisponibilizarParaRetirada(int id, string matriculaAdmin, string? observacao = null) =>
+            DefinirDestino(id, StatusSolicitacao.AguardandoRetirada, matriculaAdmin, observacao);
+
+        // US-10 (caminho 2): CONCLUIDA -> SEM REPARO (fim do fluxo operacional: não há retirada)
+        public void CondenarSemReparo(int id, string matriculaAdmin, string? observacao = null) =>
+            DefinirDestino(id, StatusSolicitacao.SemReparo, matriculaAdmin, observacao);
+
+        private void DefinirDestino(int id, string novoStatus, string matriculaAdmin, string? observacao)
+        {
+            var solicitacao = _repositorio.ObterPorId(id)
+                ?? throw new SolicitacaoNaoEncontradaException(id);
+
+            if (solicitacao.Status != StatusSolicitacao.Concluida)
+                throw new RegraDeNegocioException(
+                    $"Transição inválida: a solicitação precisa estar CONCLUIDA para ir para {novoStatus} (status atual: {solicitacao.Status}).");
+
+            var texto = string.IsNullOrWhiteSpace(observacao) ? null : observacao.Trim();
+            if (texto is not null && texto.Length > TamanhoMaximoObservacao)
+                throw new RegraDeNegocioException($"A observação deve ter no máximo {TamanhoMaximoObservacao} caracteres.");
+
+            solicitacao.ObservacaoDestino = texto;
+            Transicionar(solicitacao, novoStatus, matriculaAdmin, texto);
+        }
+
+        // US-11: AGUARDANDO RETIRADA -> RETIRADO
+        public void RegistrarRetirada(int id, string matriculaAdmin, string identificacaoRecebedor)
+        {
+            var solicitacao = _repositorio.ObterPorId(id)
+                ?? throw new SolicitacaoNaoEncontradaException(id);
+
+            if (solicitacao.Status != StatusSolicitacao.AguardandoRetirada)
+                throw new RegraDeNegocioException(
+                    $"Transição inválida: apenas equipamentos AGUARDANDO RETIRADA podem ser entregues (status atual: {solicitacao.Status}).");
+
+            if (string.IsNullOrWhiteSpace(identificacaoRecebedor))
+                throw new RegraDeNegocioException("O CPF ou matrícula do responsável pela retirada é obrigatório.");
+            var identificacao = identificacaoRecebedor.Trim();
+            if (identificacao.Length > TamanhoMaximoIdentificacao)
+                throw new RegraDeNegocioException($"A identificação do recebedor deve ter no máximo {TamanhoMaximoIdentificacao} caracteres.");
+
+            solicitacao.IdentificacaoRetirada = identificacao;
+            solicitacao.DataRetirada = _relogio.GetUtcNow().UtcDateTime;
+            // O CPF/matrícula fica só na SSL; o histórico registra apenas o Admin que fez o protocolo
+            Transicionar(solicitacao, StatusSolicitacao.Retirado, matriculaAdmin, "Protocolo de retirada registrado.");
         }
 
         // Busca a solicitação e garante que ela está apta para triagem:
