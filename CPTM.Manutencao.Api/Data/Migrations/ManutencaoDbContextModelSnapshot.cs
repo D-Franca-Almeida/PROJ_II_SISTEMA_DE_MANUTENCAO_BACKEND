@@ -546,6 +546,9 @@ namespace CPTM.Manutencao.Api.Data.Migrations
                     b.Property<DateTime?>("DataRecebimento")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("DataRetirada")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Descricao")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -556,6 +559,10 @@ namespace CPTM.Manutencao.Api.Data.Migrations
 
                     b.Property<string>("FotoUrl")
                         .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("IdentificacaoRetirada")
+                        .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("MatriculaSolicitante")
@@ -573,6 +580,10 @@ namespace CPTM.Manutencao.Api.Data.Migrations
 
                     b.Property<string>("NumeroSsm")
                         .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ObservacaoDestino")
+                        .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Status")
