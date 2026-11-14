@@ -1,0 +1,46 @@
+name: CI
+
+# Executa build e testes a cada push na main e em todo Pull Request.
+# Para bloquear o merge quando falhar: Settings > Branches > Branch protection rule (main)
+# > "Require status checks to pass before merging" > selecionar "build-e-testes".
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  build-e-testes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restaurar dependências
+        run: dotnet restore CPTM.Manutencao.Tests/CPTM.Manutencao.Tests.csproj
+
+      - name: Build
+        run: dotnet build CPTM.Manutencao.Tests/CPTM.Manutencao.Tests.csproj --no-restore --configuration Release
+
+      - name: Testes (com cobertura)
+        run: >
+          dotnet test CPTM.Manutencao.Tests/CPTM.Manutencao.Tests.csproj
+          --no-build --configuration Release
+          --logger "trx;LogFileName=resultados.trx"
+          --collect:"XPlat Code Coverage"
+          --results-directory ./resultados
+
+      - name: Publicar resultados dos testes e cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultados-testes
+          path: resultados/
