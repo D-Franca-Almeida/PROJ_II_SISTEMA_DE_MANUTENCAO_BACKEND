@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="CPTM.Manutencao.Api.csproj" />
+  <Project Path="../CPTM.Manutencao.Tests/CPTM.Manutencao.Tests.csproj" />
 </Solution>
