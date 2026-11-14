@@ -1,0 +1,21 @@
+# Execução local em container:
+#   1) copie .env.example para .env e preencha JWT_KEY (mín. 32 caracteres)
+#   2) docker compose up --build
+#   3) abra http://localhost:8080/swagger  e  http://localhost:8080/health
+services:
+  api:
+    build: .
+    image: cptm-manutencao-api:local
+    ports:
+      - "8080:8080"
+    environment:
+      Jwt__Key: ${JWT_KEY:?Defina JWT_KEY no arquivo .env (minimo 32 caracteres)}
+      Swagger__Habilitar: "true"
+      Cors__Origens__0: "http://localhost:5173"
+      Cors__Origens__1: "http://localhost:8081"
+    volumes:
+      - cptm-data:/data
+
+volumes:
+  cptm-data:
+
