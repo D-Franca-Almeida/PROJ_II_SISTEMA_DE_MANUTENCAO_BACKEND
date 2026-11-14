@@ -24,6 +24,7 @@ public sealed class CptmApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Database:RecriarAoIniciar", "true");
         builder.UseSetting("ConnectionStrings:Sqlite", StringDeConexao);
         builder.UseSetting("Uploads:Raiz", PastaUploads);
+        builder.UseSetting("AzureStorage:ConnectionString", "");
         builder.UseSetting("Prazos:ExecucaoAutomatica", "false");
     }
 

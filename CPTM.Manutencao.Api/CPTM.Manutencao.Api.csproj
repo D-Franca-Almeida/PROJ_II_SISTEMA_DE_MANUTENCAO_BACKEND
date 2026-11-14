@@ -5,10 +5,13 @@
 		<TargetFramework>net10.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
-	</PropertyGroup>
+	  <UserSecretsId>5b3d0982-7d83-414a-aec3-5b7cb0de4ab3</UserSecretsId>
+  </PropertyGroup>
 
 	<ItemGroup>
 		<!-- Alinhando todos os pacotes da Microsoft para a versão 10.0.12 -->
+		<PackageReference Include="Azure.Storage.Blobs" Version="12.30.1" />
+		<PackageReference Include="Azure.Storage.Queues" Version="12.28.1" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
 			<PrivateAssets>all</PrivateAssets>
