@@ -1,0 +1,49 @@
+name: Deploy Azure (manual)
+
+# MODELO: dispara só manualmente (Actions > Deploy Azure (manual) > Run workflow).
+# Pré-requisitos: ver deploy/azure/ROTEIRO-DEPLOY-AZURE.md (recursos criados + secrets/variables abaixo).
+#   Secret   AZURE_CREDENTIALS : JSON do service principal (az ad sp create-for-rbac --sdk-auth)
+#   Variable AZURE_RG, AZURE_ACR, AZURE_CONTAINERAPP
+# Nenhuma credencial fica no código: tudo vem de GitHub Secrets/Variables.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login na Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Build da imagem no ACR (não precisa de Docker local)
+        run: >
+          az acr build
+          --registry ${{ vars.AZURE_ACR }}
+          --image cptm-manutencao-api:${{ github.sha }}
+          --image cptm-manutencao-api:latest
+          .
+
+      - name: Atualizar o Container App com a nova imagem
+        run: >
+          az containerapp update
+          --name ${{ vars.AZURE_CONTAINERAPP }}
+          --resource-group ${{ vars.AZURE_RG }}
+          --image ${{ vars.AZURE_ACR }}.azurecr.io/cptm-manutencao-api:${{ github.sha }}
+
+      - name: Verificar saúde
+        run: |
+          FQDN=$(az containerapp show --name ${{ vars.AZURE_CONTAINERAPP }} --resource-group ${{ vars.AZURE_RG }} --query properties.configuration.ingress.fqdn -o tsv)
+          for i in 1 2 3 4 5 6; do
+            if curl -fsS "https://$FQDN/health"; then echo; echo "OK: https://$FQDN"; exit 0; fi
+            sleep 10
+          done
+          echo "API não respondeu em /health"; exit 1
+

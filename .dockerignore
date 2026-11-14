@@ -1,0 +1,13 @@
+**/bin/
+**/obj/
+**/.vs/
+**/*.user
+**/*.db
+**/*.db-journal
+**/wwwroot/uploads/
+CPTM.Manutencao.Tests/
+.git/
+.github/
+.env
+*.md
+

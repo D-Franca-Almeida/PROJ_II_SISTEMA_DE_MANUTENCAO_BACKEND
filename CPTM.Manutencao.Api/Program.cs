@@ -60,9 +60,17 @@ builder.Services.AddCors(opcoes =>
         .AllowAnyHeader()
         .AllowAnyMethod()));
 
-// Motor de Segurança JWT (a chave vem de appsettings: Jwt:Key)
-var chaveSecreta = Encoding.UTF8.GetBytes(
-    builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key não configurada."));
+// Motor de Segurança JWT. A chave NÃO fica em appsettings.json: em produção vem de variável de ambiente
+// (Jwt__Key, secret do Container Apps/Key Vault); em Development, de appsettings.Development.json.
+var chaveJwt = builder.Configuration["Jwt:Key"];
+if (string.IsNullOrWhiteSpace(chaveJwt))
+    throw new InvalidOperationException("Jwt:Key não configurada. Defina a variável de ambiente Jwt__Key.");
+if (chaveJwt.Length < 32)
+    throw new InvalidOperationException("Jwt:Key deve ter pelo menos 32 caracteres.");
+var chaveSecreta = Encoding.UTF8.GetBytes(chaveJwt);
+
+// Health check (liveness/readiness): GET /health
+builder.Services.AddHealthChecks().AddCheck<BancoHealthCheck>("banco");
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -128,7 +136,8 @@ using (var escopo = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// Swagger: sempre em Development; na nuvem só se Swagger__Habilitar=true (útil para a demonstração)
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger:Habilitar"))
 {
     app.UseSwagger();
     app.UseSwaggerUI();
@@ -148,6 +157,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 app.Run();
 
