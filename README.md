@@ -14,8 +14,11 @@ API RESTful em **.NET 10** responsável por gerenciar o ciclo de vida completo d
 - **Autenticação JWT (`Bearer`) e Autorização RBAC** em 3 perfis: `Comum`, `Tecnico` e `Administrativo` (senhas com hash `PBKDF2` e proteção contra *timing attack*)
 - **Controle de Concorrência Otimista:** Coluna `Status` como *Concurrency Token* em `SOLICITACOES` e `PEDIDO_PECA` (retorna `409 Conflict` em corridas simultâneas)
 - **Auditoria Completa (US-16):** Toda mudança de estado grava automaticamente uma linha em `HISTORICO_STATUS` na mesma transação
+- **Armazenamento e Mensageria em Nuvem (Microsoft Azure):**
+  - **Azure Blob Storage (`AzureBlobFotoStorage`):** Armazena as fotos das SSLs no container `uploads` da Storage Account `stcptmmanut2026` (com *fallback* automático para disco local quando a connection string não está configurada)
+  - **Azure Queue Storage (`AzureQueueNotificacaoService`):** Publica eventos JSON na fila `eventos-manutencao` a cada tentativa de login (`LOGIN_SUCESSO` / `LOGIN_FALHA`) e a cada transição de status (`MUDANCA_STATUS`)
 - **Background Service (US-20):** Job periódico (`ExpiracaoBackgroundService`) que expira solicitações `DEVOLVIDA` ou `APROVADA` sem movimentação após o prazo configurável (padrão: 10 dias)
-- **Testes Automatizados (TDD):** **383 testes** (`xUnit` + `WebApplicationFactory` + `Coverlet`) executados em pipeline **GitHub Actions**
+- **Testes Automatizados (TDD):** **384 testes** (`xUnit` + `WebApplicationFactory` + `Coverlet`) executados em pipeline **GitHub Actions**
 - **Conteinerização e Nuvem:** `Dockerfile` multi-stage (usuário não-root), `docker-compose.yml`, endpoint `/health` e roteiro de deploy para **Microsoft Azure Container Apps**
 
 ---
@@ -173,6 +176,19 @@ Use o endpoint `POST /api/Auth/login` no Swagger e cole o token retornado no bot
 | Método | Rota | Acesso | Descrição |
 | :--- | :--- | :--- | :--- |
 | `POST` | `/api/admin/expiracao/executar` | `Administrativo` | Dispara manualmente a verificação de expiração de SSLs ociosas |
+| `GET` | `/api/admin/eventos-fila` | `Administrativo` | Lista os últimos eventos publicados na fila de mensageria (Login e Mudanças de Status) |
+
+---
+
+## ☁️ Configuração do Azure Blob + Queue Storage (Opcional para Dev Local)
+
+Por padrão, se nenhuma chave da Azure estiver configurada na máquina, a API funciona 100% usando **disco local** (`wwwroot/uploads`) e **fila em memória** (nenhum teste quebra).
+
+Para conectar sua máquina local à Storage Account real do projeto (`stcptmmanut2026` — container `uploads` e fila `eventos-manutencao`), basta registrar a *Connection String* no **User Secrets** do .NET (fora do Git):
+
+```powershell
+dotnet user-secrets set "AzureStorage:ConnectionString" "<COLE_A_CONNECTION_STRING_AQUI>" --project CPTM.Manutencao.Api/CPTM.Manutencao.Api.csproj
+```
 
 ---
 
