@@ -9,10 +9,12 @@ namespace CPTM.Manutencao.Api.Controllers
     public class AdminExpiracaoController : ControllerBase
     {
         private readonly IExpiracaoService _expiracao;
+        private readonly INotificacaoQueue _fila;
 
-        public AdminExpiracaoController(IExpiracaoService expiracao)
+        public AdminExpiracaoController(IExpiracaoService expiracao, INotificacaoQueue fila)
         {
             _expiracao = expiracao;
+            _fila = fila;
         }
 
         // Roda a mesma rotina do job diário na hora (US-20; usado para demonstrar na banca)
@@ -23,5 +25,11 @@ namespace CPTM.Manutencao.Api.Controllers
             var matricula = User.FindFirst("Matricula")?.Value;
             return Ok(_expiracao.Executar(matricula));
         }
+
+        // Consulta os últimos eventos publicados na fila de mensageria (Login e Transições de Status)
+        [HttpGet("/api/admin/eventos-fila")]
+        [Authorize(Policy = "RequerPerfilAdmin")]
+        public IActionResult ListarEventosFila([FromQuery] int limite = 50) =>
+            Ok(_fila.ObterRecentes(limite));
     }
 }

@@ -43,14 +43,27 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IExpiracaoService, ExpiracaoService>();
 builder.Services.AddHostedService<ExpiracaoBackgroundService>();
 
-// Fotos das SSLs ficam em disco (nunca no banco). A raiz vem de Uploads:Raiz (padrão: wwwroot/uploads).
+// Fotos das SSLs e Mensageria de Eventos (Azure Blob Storage + Azure Queue Storage quando AzureStorage:ConnectionString
+// está configurada; caso contrário, usa disco local em Uploads:Raiz e fila em memória para desenvolvimento/testes).
 var raizUploads = builder.Configuration["Uploads:Raiz"];
 if (string.IsNullOrWhiteSpace(raizUploads))
     raizUploads = Path.Combine(builder.Environment.ContentRootPath, "wwwroot", "uploads");
 raizUploads = Path.GetFullPath(raizUploads);
 Directory.CreateDirectory(raizUploads);
 builder.Services.AddSingleton(new UploadsOptions { Raiz = raizUploads });
-builder.Services.AddSingleton<IFotoStorage, FotoStorage>();
+
+var azureStorage = builder.Configuration.GetSection("AzureStorage").Get<AzureStorageOptions>() ?? new AzureStorageOptions();
+builder.Services.AddSingleton(azureStorage);
+if (!string.IsNullOrWhiteSpace(azureStorage.ConnectionString))
+{
+    builder.Services.AddSingleton<IFotoStorage, AzureBlobFotoStorage>();
+    builder.Services.AddSingleton<INotificacaoQueue, AzureQueueNotificacaoService>();
+}
+else
+{
+    builder.Services.AddSingleton<IFotoStorage, FotoStorage>();
+    builder.Services.AddSingleton<INotificacaoQueue, InMemoryNotificacaoQueue>();
+}
 
 // CORS para os front-ends (web Vite e Expo web). As origens vêm de Cors:Origens.
 var origensPermitidas = builder.Configuration.GetSection("Cors:Origens").Get<string[]>() ?? Array.Empty<string>();

@@ -22,12 +22,14 @@ namespace CPTM.Manutencao.Api.Services
         private readonly IConfiguration _configuration;
         private readonly ManutencaoDbContext _db;
         private readonly IPasswordHasher<Usuario> _hasher;
+        private readonly INotificacaoQueue? _fila;
 
-        public AuthService(IConfiguration configuration, ManutencaoDbContext db, IPasswordHasher<Usuario> hasher)
+        public AuthService(IConfiguration configuration, ManutencaoDbContext db, IPasswordHasher<Usuario> hasher, INotificacaoQueue? fila = null)
         {
             _configuration = configuration;
             _db = db;
             _hasher = hasher;
+            _fila = fila;
         }
 
         public string? RealizarLogin(string matricula, string senha)
@@ -44,8 +46,17 @@ namespace CPTM.Manutencao.Api.Services
                 usuario?.SenhaHash ?? hashFantasma,
                 senha);
 
-            if (usuario == null) return null;
-            if (resultado == PasswordVerificationResult.Failed) return null;
+            if (usuario == null || resultado == PasswordVerificationResult.Failed)
+            {
+                _fila?.Publicar(new EventoSistemaMensagem(
+                    "LOGIN_FALHA", matriculaLimpa, null, null, null,
+                    "Tentativa de login com credenciais inválidas.", DateTime.UtcNow));
+                return null;
+            }
+
+            _fila?.Publicar(new EventoSistemaMensagem(
+                "LOGIN_SUCESSO", usuario.Matricula, null, null, null,
+                $"Login autenticado (Perfil: {usuario.Perfil}).", DateTime.UtcNow));
 
             return GerarTokenJwt(usuario);
         }

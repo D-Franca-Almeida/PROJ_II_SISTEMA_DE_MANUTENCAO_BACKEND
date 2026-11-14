@@ -91,11 +91,13 @@ namespace CPTM.Manutencao.Api.Services
     {
         private readonly ISolicitacaoRepository _repositorio;
         private readonly TimeProvider _relogio;
+        private readonly INotificacaoQueue? _fila;
 
-        public WorkflowService(ISolicitacaoRepository repositorio, TimeProvider? relogio = null)
+        public WorkflowService(ISolicitacaoRepository repositorio, TimeProvider? relogio = null, INotificacaoQueue? fila = null)
         {
             _repositorio = repositorio;
             _relogio = relogio ?? TimeProvider.System;
+            _fila = fila;
         }
 
         public void AprovarTriagem(int id, string matriculaLogada)
@@ -317,6 +319,15 @@ namespace CPTM.Manutencao.Api.Services
 
             solicitacao.Status = novoStatus;
             _repositorio.Salvar(solicitacao, historico);
+
+            _fila?.Publicar(new EventoSistemaMensagem(
+                "MUDANCA_STATUS",
+                historico.Matricula,
+                solicitacao.Id,
+                historico.StatusAnterior,
+                historico.StatusNovo,
+                historico.Observacao,
+                historico.Data));
         }
 
         public const int TamanhoMaximoObservacao = 500;
