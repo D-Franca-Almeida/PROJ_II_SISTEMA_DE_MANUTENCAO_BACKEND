@@ -66,7 +66,7 @@ namespace CPTM.Manutencao.Api.Data
             return new SolicitacaoDetalheDto(r.Id, r.Status, r.Descricao, r.FotoUrl, r.DataAbertura,
                 r.MatriculaSolicitante, r.Equipamento, r.Estacao, r.MotivoDevolucao,
                 s.MatriculaTecnico, s.DataInicioManutencao, historico, r.DiasParaExpirar, s.NumeroSsm, s.DataRecebimento,
-                ordemServicoId);
+                ordemServicoId, s.ObservacaoDestino, s.AutorizadoNome, s.AutorizadoDocumento, s.IdentificacaoRetirada, s.DataRetirada);
         }
 
         public List<CandidatoExpiracao> ObterCandidatosExpiracao()

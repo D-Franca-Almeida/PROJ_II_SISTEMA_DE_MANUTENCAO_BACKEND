@@ -358,27 +358,51 @@ namespace CPTM.Manutencao.Api.Services
             Transicionar(solicitacao, novoStatus, matriculaAdmin, texto);
         }
 
-        // US-11: AGUARDANDO RETIRADA -> RETIRADO
+        // US-11: AGUARDANDO RETIRADA | RETIRADA AUTORIZADA (US-24) -> RETIRADO
         public void RegistrarRetirada(int id, string matriculaAdmin, string identificacaoRecebedor)
         {
             var solicitacao = _repositorio.ObterPorId(id)
                 ?? throw new SolicitacaoNaoEncontradaException(id);
 
-            if (solicitacao.Status != StatusSolicitacao.AguardandoRetirada)
+            if (solicitacao.Status != StatusSolicitacao.AguardandoRetirada && solicitacao.Status != StatusSolicitacao.RetiradaAutorizada)
                 throw new RegraDeNegocioException(
-                    $"Transição inválida: apenas equipamentos AGUARDANDO RETIRADA podem ser entregues (status atual: {solicitacao.Status}).");
+                    $"Transição inválida: apenas equipamentos AGUARDANDO RETIRADA ou RETIRADA AUTORIZADA podem ser entregues (status atual: {solicitacao.Status}).");
 
             if (string.IsNullOrWhiteSpace(identificacaoRecebedor))
                 throw new RegraDeNegocioException("O CPF ou matrícula do responsável pela retirada é obrigatório.");
             var identificacao = identificacaoRecebedor.Trim();
             if (identificacao.Length > TamanhoMaximoIdentificacao)
                 throw new RegraDeNegocioException($"A identificação do recebedor deve ter no máximo {TamanhoMaximoIdentificacao} caracteres.");
+            ValidarDocumentoDoRecebedor(solicitacao, identificacao);
 
             solicitacao.IdentificacaoRetirada = identificacao;
             solicitacao.DataRetirada = _relogio.GetUtcNow().UtcDateTime;
             // O CPF/matrícula fica só na SSL; o histórico registra apenas o Admin que fez o protocolo
             Transicionar(solicitacao, StatusSolicitacao.Retirado, matriculaAdmin, "Protocolo de retirada registrado.");
         }
+
+        // US-11: o solicitante sempre pode retirar; o terceiro, só com a autorização da US-24
+        private static void ValidarDocumentoDoRecebedor(Solicitacao solicitacao, string documento)
+        {
+            if (MesmoDocumento(documento, solicitacao.MatriculaSolicitante))
+                return;
+            if (solicitacao.Status == StatusSolicitacao.RetiradaAutorizada && MesmoDocumento(documento, solicitacao.AutorizadoDocumento))
+                return;
+
+            throw new RegraDeNegocioException(solicitacao.Status == StatusSolicitacao.RetiradaAutorizada
+                ? "O documento informado não confere com a matrícula do solicitante nem com o documento autorizado."
+                : "O documento informado não confere com a matrícula do solicitante. Para outra pessoa retirar, registre antes a autorização de retirada.");
+        }
+
+        // Compara CPF/matrícula ignorando pontuação, espaços e maiúsculas (123.456.789-00 == 12345678900)
+        private static bool MesmoDocumento(string informado, string? esperado)
+        {
+            var normalizado = SoLetrasEDigitos(informado);
+            return normalizado.Length > 0 && esperado is not null &&
+                string.Equals(normalizado, SoLetrasEDigitos(esperado), StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string SoLetrasEDigitos(string texto) => new(texto.Where(char.IsLetterOrDigit).ToArray());
 
         // Busca a solicitação e garante que ela está apta para triagem:
         // só SOLICITADA ou REENVIADA podem sofrer aprovação/devolução/cancelamento.

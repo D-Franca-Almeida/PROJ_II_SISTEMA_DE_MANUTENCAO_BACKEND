@@ -133,6 +133,17 @@ Verificar 63 "PUT /1/autorizar-retirada Comum dono"       200 (Chamar "Put" "/ap
 Verificar 64 "PUT /1/autorizar-retirada de novo"          400 (Chamar "Put" "/api/Solicitacoes/1/autorizar-retirada" $tokComum $autorizacao)
 Verificar 65 "PUT /10/autorizar-retirada Admin"           200 (Chamar "Put" "/api/Solicitacoes/10/autorizar-retirada" $tokAdmin '{ "nome": "Joao Lima", "documento": "tec999" }')
 
+Write-Host "== Etapa 11: Protocolo de retirada (US-11) ==" -ForegroundColor Cyan
+Verificar 66 "PUT /1/retirar Comum"                       403 (Chamar "Put" "/api/Solicitacoes/1/retirar" $tokComum '{ "identificacaoRecebedor": "12345678900" }')
+Verificar 67 "PUT /1/retirar documento errado"            400 (Chamar "Put" "/api/Solicitacoes/1/retirar" $tokAdmin '{ "identificacaoRecebedor": "99999999999" }')
+Verificar 68 "PUT /1/retirar terceiro autorizado"         200 (Chamar "Put" "/api/Solicitacoes/1/retirar" $tokAdmin '{ "identificacaoRecebedor": "12345678900" }')
+Verificar 69 "PUT /6/retirar terceiro sem autorizacao"    400 (Chamar "Put" "/api/Solicitacoes/6/retirar" $tokAdmin '{ "identificacaoRecebedor": "12345678900" }')
+Verificar 70 "PUT /6/retirar solicitante"                 200 (Chamar "Put" "/api/Solicitacoes/6/retirar" $tokAdmin '{ "identificacaoRecebedor": "comum123" }')
+Verificar 71 "PUT /10/retirar solicitante (autorizada)"   200 (Chamar "Put" "/api/Solicitacoes/10/retirar" $tokAdmin '{ "identificacaoRecebedor": "comum123" }')
+Verificar 72 "PUT /1/retirar de novo (RETIRADO)"          400 (Chamar "Put" "/api/Solicitacoes/1/retirar" $tokAdmin '{ "identificacaoRecebedor": "12345678900" }')
+Verificar 73 "GET /1 Comum (dados da retirada)"           200 (Chamar "Get" "/api/Solicitacoes/1" $tokComum)
+Verificar 74 "PUT /11/retirar (INUTILIZADO)"              400 (Chamar "Put" "/api/Solicitacoes/11/retirar" $tokAdmin '{ "identificacaoRecebedor": "comum123" }')
+
 Write-Host ""
 if ($script:falhas -eq 0) { Write-Host "TODOS OS PASSOS VALIDADOS." -ForegroundColor Green }
 else { Write-Host "$($script:falhas) passo(s) com falha." -ForegroundColor Red; exit 1 }
