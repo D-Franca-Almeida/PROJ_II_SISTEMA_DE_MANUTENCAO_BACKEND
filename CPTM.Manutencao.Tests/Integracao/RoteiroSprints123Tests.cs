@@ -152,5 +152,20 @@ public sealed class RoteiroSprints123Tests : IClassFixture<CptmApiFactory>
         var passo49 = await Passo("49", HttpStatusCode.OK,
             tecnico.PutAsync("/api/Solicitacoes/10/concluir", CptmApiFactory.Json("{ \"laudo\": \"Placa reparada\" }")));
         Assert.Equal(StatusSolicitacao.Concluida, passo49!.Value.GetProperty("novoStatus").GetString());
+
+        await Passo("50", HttpStatusCode.Unauthorized, anonimo.PutAsync("/api/Solicitacoes/6/liberar-retirada", null));
+        await Passo("51", HttpStatusCode.Forbidden, comum.PutAsync("/api/Solicitacoes/6/liberar-retirada", null));
+        TemPropriedade("52", await Passo("52", HttpStatusCode.BadRequest, admin.PutAsync("/api/Solicitacoes/6/sem-reparo", null)), "erro");
+        var passo53 = await Passo("53", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/6/liberar-retirada", null));
+        Assert.Equal(StatusSolicitacao.AguardandoRetirada, passo53!.Value.GetProperty("novoStatus").GetString());
+        TemPropriedade("54", await Passo("54", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/10/sem-reparo",
+            CptmApiFactory.Json("{ \"observacao\": \"Sem peca no mercado\" }"))), "novoStatus");
+        TemPropriedade("55", await Passo("55", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/10/liberar-retirada", null)), "novoStatus");
+        TemPropriedade("56", await Passo("56", HttpStatusCode.BadRequest, admin.PutAsync("/api/Solicitacoes/1/inutilizar", null)), "erro");
+        TemPropriedade("57", await Passo("57", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/11/sem-reparo", null)), "novoStatus");
+        var passo58 = await Passo("58", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/11/inutilizar", null));
+        Assert.Equal(StatusSolicitacao.Inutilizado, passo58!.Value.GetProperty("novoStatus").GetString());
+        TemPropriedade("59", await Passo("59", HttpStatusCode.BadRequest, admin.PutAsync("/api/Solicitacoes/11/liberar-retirada", null)), "erro");
+        TemPropriedade("60", await Passo("60", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/1/aguardar-retirada", null)), "novoStatus");
     }
 }

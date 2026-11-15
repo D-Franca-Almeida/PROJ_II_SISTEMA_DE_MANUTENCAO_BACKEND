@@ -101,8 +101,9 @@ public sealed class FechamentoRetiradaHttpTests : IClassFixture<CptmApiFactory>
     [InlineData("APROVADA", "aguardar-retirada")]
     [InlineData("EM MANUTENCAO", "sem-reparo")]
     [InlineData("AGUARDANDO RETIRADA", "sem-reparo")]
-    [InlineData("SEM REPARO", "aguardar-retirada")]
-    public async Task Destino_so_a_partir_de_concluida_400(string statusAtual, string rota)
+    [InlineData("RETIRADO", "aguardar-retirada")]
+    [InlineData("NAO EXECUTADA", "sem-reparo")]
+    public async Task Destino_de_status_invalido_400(string statusAtual, string rota)
     {
         var id = Inserir(statusAtual);
         using var admin = await _api.CriarClienteLogadoAsync("admin123");

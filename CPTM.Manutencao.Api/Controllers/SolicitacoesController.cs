@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using CPTM.Manutencao.Api.Models;
 using CPTM.Manutencao.Api.Services;
+using CPTM.Manutencao.Api.Features.Destino.Commands;
 
 namespace CPTM.Manutencao.Api.Controllers
 {
@@ -313,8 +314,9 @@ namespace CPTM.Manutencao.Api.Controllers
             }
         }
 
-        // 📦 US-10 (caminho 1): Admin libera para retirada (CONCLUIDA -> AGUARDANDO RETIRADA)
+        // 📦 US-10: Admin libera para retirada (CONCLUIDA | NAO EXECUTADA | SEM REPARO -> AGUARDANDO RETIRADA)
         [HttpPut("{id:int}/aguardar-retirada")]
+        [HttpPut("{id:int}/liberar-retirada")]
         [Authorize(Policy = "RequerPerfilAdmin")]
         public IActionResult DisponibilizarParaRetirada(int id, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] DestinoDto? dto = null)
         {
@@ -337,6 +339,20 @@ namespace CPTM.Manutencao.Api.Controllers
 
             return Executar(() => _workflowService.CondenarSemReparo(id, matricula, dto?.Observacao),
                 "Equipamento classificado como Sem Reparo (baixa técnica).", StatusSolicitacao.SemReparo);
+        }
+
+        // US-10: Admin descarta o equipamento (SEM REPARO -> INUTILIZADO, estado final)
+        [HttpPut("{id:int}/inutilizar")]
+        [Authorize(Policy = "RequerPerfilAdmin")]
+        public IActionResult Inutilizar(int id, [FromServices] IInutilizarEquipamentoHandler handler,
+            [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] DestinoDto? dto = null)
+        {
+            var matricula = User.FindFirst("Matricula")?.Value;
+            if (string.IsNullOrEmpty(matricula))
+                return Forbid();
+
+            return Executar(() => handler.Executar(id, matricula, dto?.Observacao),
+                "Equipamento inutilizado (descarte).", StatusSolicitacao.Inutilizado);
         }
 
         // 🤝 US-11: Protocolo de retirada (AGUARDANDO RETIRADA -> RETIRADO)

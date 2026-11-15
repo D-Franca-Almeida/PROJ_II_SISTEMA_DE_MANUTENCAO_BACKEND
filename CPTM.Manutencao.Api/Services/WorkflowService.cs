@@ -330,30 +330,30 @@ namespace CPTM.Manutencao.Api.Services
                 historico.Data));
         }
 
-        public const int TamanhoMaximoObservacao = 500;
         public const int TamanhoMaximoIdentificacao = 100;
 
-        // US-10 (caminho 1): CONCLUIDA -> AGUARDANDO RETIRADA
+        private static readonly string[] OrigensLiberarRetirada =
+            { StatusSolicitacao.Concluida, StatusSolicitacao.NaoExecutada, StatusSolicitacao.SemReparo };
+        private static readonly string[] OrigensSemReparo = { StatusSolicitacao.Concluida };
+
+        // US-10: CONCLUIDA | NAO EXECUTADA | SEM REPARO (solicitante quer de volta) -> AGUARDANDO RETIRADA
         public void DisponibilizarParaRetirada(int id, string matriculaAdmin, string? observacao = null) =>
-            DefinirDestino(id, StatusSolicitacao.AguardandoRetirada, matriculaAdmin, observacao);
+            DefinirDestino(id, StatusSolicitacao.AguardandoRetirada, OrigensLiberarRetirada, matriculaAdmin, observacao);
 
-        // US-10 (caminho 2): CONCLUIDA -> SEM REPARO (fim do fluxo operacional: não há retirada)
+        // US-10: CONCLUIDA -> SEM REPARO (depois: INUTILIZADO ou de volta para AGUARDANDO RETIRADA)
         public void CondenarSemReparo(int id, string matriculaAdmin, string? observacao = null) =>
-            DefinirDestino(id, StatusSolicitacao.SemReparo, matriculaAdmin, observacao);
+            DefinirDestino(id, StatusSolicitacao.SemReparo, OrigensSemReparo, matriculaAdmin, observacao);
 
-        private void DefinirDestino(int id, string novoStatus, string matriculaAdmin, string? observacao)
+        private void DefinirDestino(int id, string novoStatus, string[] origens, string matriculaAdmin, string? observacao)
         {
             var solicitacao = _repositorio.ObterPorId(id)
                 ?? throw new SolicitacaoNaoEncontradaException(id);
 
-            if (solicitacao.Status != StatusSolicitacao.Concluida)
+            if (!origens.Contains(solicitacao.Status))
                 throw new RegraDeNegocioException(
-                    $"Transição inválida: a solicitação precisa estar CONCLUIDA para ir para {novoStatus} (status atual: {solicitacao.Status}).");
+                    $"Transição inválida: a solicitação precisa estar {string.Join(" ou ", origens)} para ir para {novoStatus} (status atual: {solicitacao.Status}).");
 
-            var texto = string.IsNullOrWhiteSpace(observacao) ? null : observacao.Trim();
-            if (texto is not null && texto.Length > TamanhoMaximoObservacao)
-                throw new RegraDeNegocioException($"A observação deve ter no máximo {TamanhoMaximoObservacao} caracteres.");
-
+            var texto = ObservacaoDestino.Normalizar(observacao);
             solicitacao.ObservacaoDestino = texto;
             Transicionar(solicitacao, novoStatus, matriculaAdmin, texto);
         }

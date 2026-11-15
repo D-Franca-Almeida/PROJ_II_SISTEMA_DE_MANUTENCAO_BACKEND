@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using CPTM.Manutencao.Api.Services;
 using CPTM.Manutencao.Api.Data;
+using CPTM.Manutencao.Api.Features.Destino.Commands;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -35,6 +36,7 @@ builder.Services.AddScoped<IOrdemServicoRepository, OrdemServicoRepository>();
 builder.Services.AddScoped<IPedidoPecaRepository, PedidoPecaRepository>();
 builder.Services.AddScoped<IPedidoPecaService, PedidoPecaService>();
 builder.Services.AddScoped<ISolicitacaoService, SolicitacaoService>();
+builder.Services.AddScoped<IInutilizarEquipamentoHandler, InutilizarEquipamentoHandler>();
 
 // Expiração (US-20): prazo e agendamento em Prazos:*; o relógio é injetável (TimeProvider) para os testes.
 var prazos = builder.Configuration.GetSection("Prazos").Get<PrazosOptions>() ?? new PrazosOptions();
