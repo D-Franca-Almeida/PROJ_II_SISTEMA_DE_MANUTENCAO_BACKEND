@@ -222,5 +222,21 @@ public sealed class RoteiroSprints123Tests : IClassFixture<CptmApiFactory>
         Assert.DoesNotContain(passo81.Value.GetProperty("notificacoes").EnumerateArray(), n => n.GetProperty("id").GetInt32() == notificacaoDoComum);
         TemPropriedade("82", await Passo("82", HttpStatusCode.NotFound, comum.PutAsync("/api/notificacoes/99999/lida", null)), "erro");
         await Passo("83", HttpStatusCode.BadRequest, comum.GetAsync("/api/notificacoes?naoLidas=talvez"));
+
+        await Passo("84", HttpStatusCode.Unauthorized, anonimo.GetAsync("/api/solicitacoes/1/historico"));
+        await Passo("85", HttpStatusCode.Forbidden, comum.GetAsync("/api/solicitacoes/4/historico"));
+        await Passo("86", HttpStatusCode.Forbidden, tecnico.GetAsync("/api/solicitacoes/4/historico"));
+        var passo87 = await Passo("87", HttpStatusCode.OK, comum.GetAsync("/api/solicitacoes/1/historico"));
+        var linhasDoHistorico = passo87!.Value.EnumerateArray().ToList();
+        Assert.Equal("SOLICITADA", linhasDoHistorico[0].GetProperty("statusNovo").GetString());
+        Assert.Equal(StatusSolicitacao.Retirado, linhasDoHistorico[^1].GetProperty("statusNovo").GetString());
+        var datasDoHistorico = linhasDoHistorico.Select(l => l.GetProperty("data").GetString()!).ToList();
+        Assert.All(datasDoHistorico, d => Assert.EndsWith("Z", d));
+        Assert.Equal(datasDoHistorico.OrderBy(d => d, StringComparer.Ordinal), datasDoHistorico);
+        Assert.DoesNotContain("12345678900", passo87.Value.GetRawText());
+        Assert.Equal(passo73.Value.GetProperty("historico").GetRawText(), passo87.Value.GetRawText());
+        await Passo("88", HttpStatusCode.OK, admin.GetAsync("/api/solicitacoes/10/historico"));
+        await Passo("89", HttpStatusCode.OK, tecnico.GetAsync("/api/solicitacoes/1/historico"));
+        TemPropriedade("90", await Passo("90", HttpStatusCode.NotFound, admin.GetAsync("/api/solicitacoes/99999/historico")), "erro");
     }
 }
