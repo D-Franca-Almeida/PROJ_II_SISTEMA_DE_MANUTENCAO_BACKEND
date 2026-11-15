@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using CPTM.Manutencao.Api.Models;
 using CPTM.Manutencao.Api.Services;
 using CPTM.Manutencao.Api.Features.Destino.Commands;
+using CPTM.Manutencao.Api.Features.Historico.Queries;
 using CPTM.Manutencao.Api.Features.Retirada.Commands;
 
 namespace CPTM.Manutencao.Api.Controllers
@@ -66,6 +67,30 @@ namespace CPTM.Manutencao.Api.Controllers
             try
             {
                 return Ok(_solicitacaoService.ObterDetalhe(id, matricula, perfil));
+            }
+            catch (SolicitacaoNaoEncontradaException ex)
+            {
+                return NotFound(new { erro = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+        }
+
+        // LINHA DO TEMPO (dono, Administrativo e Técnico da OSM) - US-26
+        [HttpGet("{id:int}/historico")]
+        [Authorize]
+        public IActionResult Historico(int id, [FromServices] IObterHistoricoHandler handler)
+        {
+            var matricula = User.FindFirst("Matricula")?.Value;
+            var perfil = User.FindFirst("Perfil")?.Value;
+            if (string.IsNullOrEmpty(matricula) || string.IsNullOrEmpty(perfil))
+                return Forbid();
+
+            try
+            {
+                return Ok(handler.Executar(id, matricula, perfil));
             }
             catch (SolicitacaoNaoEncontradaException ex)
             {
