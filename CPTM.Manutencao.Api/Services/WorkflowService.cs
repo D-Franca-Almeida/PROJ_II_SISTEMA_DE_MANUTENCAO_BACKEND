@@ -92,12 +92,15 @@ namespace CPTM.Manutencao.Api.Services
         private readonly ISolicitacaoRepository _repositorio;
         private readonly TimeProvider _relogio;
         private readonly INotificacaoQueue? _fila;
+        private readonly IGeradorDeNotificacoes? _notificacoes;
 
-        public WorkflowService(ISolicitacaoRepository repositorio, TimeProvider? relogio = null, INotificacaoQueue? fila = null)
+        public WorkflowService(ISolicitacaoRepository repositorio, TimeProvider? relogio = null, INotificacaoQueue? fila = null,
+            IGeradorDeNotificacoes? notificacoes = null)
         {
             _repositorio = repositorio;
             _relogio = relogio ?? TimeProvider.System;
             _fila = fila;
+            _notificacoes = notificacoes;
         }
 
         public void AprovarTriagem(int id, string matriculaLogada)
@@ -318,6 +321,7 @@ namespace CPTM.Manutencao.Api.Services
             };
 
             solicitacao.Status = novoStatus;
+            _notificacoes?.GerarDaTransicao(solicitacao, historico);
             _repositorio.Salvar(solicitacao, historico);
 
             _fila?.Publicar(new EventoSistemaMensagem(

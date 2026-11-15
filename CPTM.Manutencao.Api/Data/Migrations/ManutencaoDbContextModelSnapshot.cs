@@ -401,6 +401,48 @@ namespace CPTM.Manutencao.Api.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("CPTM.Manutencao.Api.Models.Notificacao", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("Data")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DataLeitura")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Lida")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("MatriculaDestino")
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Mensagem")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PerfilDestino")
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SolicitacaoId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SolicitacaoId");
+
+                    b.HasIndex("MatriculaDestino", "Lida");
+
+                    b.HasIndex("PerfilDestino", "Lida");
+
+                    b.ToTable("NOTIFICACAO", (string)null);
+                });
+
             modelBuilder.Entity("CPTM.Manutencao.Api.Models.OrdemServico", b =>
                 {
                     b.Property<int>("Id")
@@ -793,6 +835,17 @@ namespace CPTM.Manutencao.Api.Data.Migrations
                 });
 
             modelBuilder.Entity("CPTM.Manutencao.Api.Models.HistoricoStatus", b =>
+                {
+                    b.HasOne("CPTM.Manutencao.Api.Models.Solicitacao", "Solicitacao")
+                        .WithMany()
+                        .HasForeignKey("SolicitacaoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Solicitacao");
+                });
+
+            modelBuilder.Entity("CPTM.Manutencao.Api.Models.Notificacao", b =>
                 {
                     b.HasOne("CPTM.Manutencao.Api.Models.Solicitacao", "Solicitacao")
                         .WithMany()

@@ -13,6 +13,7 @@ namespace CPTM.Manutencao.Api.Data
         public DbSet<HistoricoStatus> HistoricoStatus => Set<HistoricoStatus>();
         public DbSet<OrdemServico> OrdensServico => Set<OrdemServico>();
         public DbSet<PedidoPeca> PedidosPeca => Set<PedidoPeca>();
+        public DbSet<Notificacao> Notificacoes => Set<Notificacao>();
 
         public DbSet<Usuario> Usuarios => Set<Usuario>();
         public DbSet<Estacao> Estacoes => Set<Estacao>();
@@ -160,6 +161,25 @@ namespace CPTM.Manutencao.Api.Data
                     .OnDelete(DeleteBehavior.Restrict);
                 entidade.HasIndex(p => p.OrdemServicoId);
                 entidade.HasIndex(p => p.Status);
+            });
+
+            modelBuilder.Entity<Notificacao>(entidade =>
+            {
+                entidade.ToTable("NOTIFICACAO");
+                entidade.HasKey(n => n.Id);
+                entidade.Property(n => n.MatriculaDestino).HasMaxLength(30);
+                entidade.Property(n => n.PerfilDestino).HasMaxLength(30);
+                entidade.Property(n => n.Mensagem).HasMaxLength(500).IsRequired();
+                entidade.Property(n => n.Data)
+                    .HasConversion(v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+                entidade.Property(n => n.DataLeitura)
+                    .HasConversion(v => v, v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v);
+                entidade.HasOne(n => n.Solicitacao)
+                    .WithMany()
+                    .HasForeignKey(n => n.SolicitacaoId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entidade.HasIndex(n => new { n.MatriculaDestino, n.Lida });
+                entidade.HasIndex(n => new { n.PerfilDestino, n.Lida });
             });
         }
     }
