@@ -112,6 +112,19 @@ Verificar 47 "PUT /pedidos-peca/2/cancelar (Recebido)"    400 (Chamar "Put" "/ap
 Verificar 48 "GET /ordens-servico/1/pecas Tecnico"        200 (Chamar "Get" "/api/ordens-servico/1/pecas" $tokTec)
 Verificar 49 "PUT /10/concluir (peca recebida)"           200 (Chamar "Put" "/api/Solicitacoes/10/concluir" $tokTec '{ "laudo": "Placa reparada" }')
 
+Write-Host "== Etapa 9: Destino do equipamento (US-10) ==" -ForegroundColor Cyan
+Verificar 50 "PUT /6/liberar-retirada sem token"          401 (Chamar "Put" "/api/Solicitacoes/6/liberar-retirada" $null)
+Verificar 51 "PUT /6/liberar-retirada Comum"              403 (Chamar "Put" "/api/Solicitacoes/6/liberar-retirada" $tokComum)
+Verificar 52 "PUT /6/sem-reparo (NAO EXECUTADA)"          400 (Chamar "Put" "/api/Solicitacoes/6/sem-reparo" $tokAdmin)
+Verificar 53 "PUT /6/liberar-retirada (NAO EXECUTADA)"    200 (Chamar "Put" "/api/Solicitacoes/6/liberar-retirada" $tokAdmin)
+Verificar 54 "PUT /10/sem-reparo Admin"                   200 (Chamar "Put" "/api/Solicitacoes/10/sem-reparo" $tokAdmin '{ "observacao": "Sem peca no mercado" }')
+Verificar 55 "PUT /10/liberar-retirada (SEM REPARO)"      200 (Chamar "Put" "/api/Solicitacoes/10/liberar-retirada" $tokAdmin)
+Verificar 56 "PUT /1/inutilizar (CONCLUIDA)"              400 (Chamar "Put" "/api/Solicitacoes/1/inutilizar" $tokAdmin)
+Verificar 57 "PUT /11/sem-reparo Admin"                   200 (Chamar "Put" "/api/Solicitacoes/11/sem-reparo" $tokAdmin)
+Verificar 58 "PUT /11/inutilizar Admin"                   200 (Chamar "Put" "/api/Solicitacoes/11/inutilizar" $tokAdmin)
+Verificar 59 "PUT /11/liberar-retirada (INUTILIZADO)"     400 (Chamar "Put" "/api/Solicitacoes/11/liberar-retirada" $tokAdmin)
+Verificar 60 "PUT /1/aguardar-retirada Admin"             200 (Chamar "Put" "/api/Solicitacoes/1/aguardar-retirada" $tokAdmin)
+
 Write-Host ""
 if ($script:falhas -eq 0) { Write-Host "TODOS OS PASSOS VALIDADOS." -ForegroundColor Green }
 else { Write-Host "$($script:falhas) passo(s) com falha." -ForegroundColor Red; exit 1 }
