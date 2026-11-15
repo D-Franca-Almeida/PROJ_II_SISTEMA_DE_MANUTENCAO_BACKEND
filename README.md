@@ -57,8 +57,8 @@ stateDiagram-v2
     SEM_REPARO --> INUTILIZADO : PUT /inutilizar (Admin - US-10)
 
     AGUARDANDO_RETIRADA --> RETIRADA_AUTORIZADA : PUT /autorizar-retirada (Comum dono/Admin - US-24)
-    AGUARDANDO_RETIRADA --> RETIRADO : PUT /retirar (Admin + CPF/Matricula - US-11)
-    RETIRADA_AUTORIZADA --> RETIRADO : PUT /retirar (Admin - US-11)
+    AGUARDANDO_RETIRADA --> RETIRADO : PUT /retirar (Admin + matricula do solicitante - US-11)
+    RETIRADA_AUTORIZADA --> RETIRADO : PUT /retirar (Admin + matricula do solicitante ou documento autorizado - US-11)
 
     CANCELADA --> [*]
     EXPIRADA --> [*]
@@ -107,7 +107,7 @@ dotnet run --project CPTM.Manutencao.Api
 - **Swagger UI:** `http://localhost:5203/swagger`
 - **Health Check:** `http://localhost:5203/health`
 
-> Ao iniciar em ambiente `Development`, a API aplica automaticamente todas as migrations no banco SQLite local e popula a massa de dados inicial (`DadosIniciais.cs`).
+> Ao iniciar em ambiente `Development`, a API aplica automaticamente todas as migrations no banco SQLite local e popula a massa de dados inicial (`DadosIniciais.cs`). Com `Database:RecriarAoIniciar=true` (padrão em Development), o banco é recriado a cada execução.
 
 ### 2. Executar a Suíte de Testes (588 testes)
 
@@ -137,7 +137,7 @@ Use o endpoint `POST /api/Auth/login` no Swagger e cole o token retornado no bot
 | :--- | :--- | :--- | :--- |
 | **Administrativo** | `admin123` | `senha` | Fila geral, aprovar, devolver, cancelar, receber na oficina (gerar SSM), logística de peças, definir destino (`liberar-retirada` / `sem-reparo` / `inutilizar`), protocolo de retirada (`retirar`), autorizar terceiro a retirar (`autorizar-retirada`) e dashboard |
 | **Técnico** | `tec123` | `senha` | Fila de recebidas, iniciar manutenção (abrir OSM), solicitar/cancelar peças, concluir OSM com laudo ou registrar não execução |
-| **Comum** | `comum123` | `senha` | Abrir SSL com foto, consultar minhas solicitações, corrigir/reenviar devolvidas e cancelar própria solicitação (até `APROVADA`) e autorizar terceiro a retirar (US-24) |
+| **Comum** | `comum123` | `senha` | Abrir SSL com foto, consultar minhas solicitações, corrigir/reenviar devolvidas, cancelar própria solicitação (até `APROVADA`) e autorizar terceiro a retirar (US-24) |
 
 ---
 
@@ -176,7 +176,7 @@ Use o endpoint `POST /api/Auth/login` no Swagger e cole o token retornado no bot
 | `PUT` | `/api/Solicitacoes/{id}/sem-reparo` | `Administrativo` | **US-10:** Classifica equipamento como perda total/baixa técnica (`CONCLUIDA` → `SEM REPARO`) |
 | `PUT` | `/api/Solicitacoes/{id}/inutilizar` | `Administrativo` | **US-10:** Descarte do equipamento (`SEM REPARO` → `INUTILIZADO`) |
 | `PUT` | `/api/Solicitacoes/{id}/autorizar-retirada` | `Comum` (dono) / `Administrativo` | **US-24:** Autoriza terceiro a retirar, com `{ nome, documento }` (`AGUARDANDO RETIRADA` → `RETIRADA AUTORIZADA`) |
-| `PUT` | `/api/Solicitacoes/{id}/retirar` | `Administrativo` | **US-11:** Registra protocolo final de retirada com `{ "identificacaoRecebedor": "..." }` (`AGUARDANDO RETIRADA` ou `RETIRADA AUTORIZADA` → `RETIRADO`). Em `AGUARDANDO RETIRADA`, só aceita a matrícula do solicitante |
+| `PUT` | `/api/Solicitacoes/{id}/retirar` | `Administrativo` | **US-11:** Registra protocolo final de retirada com `{ "identificacaoRecebedor": "..." }` (`AGUARDANDO RETIRADA` ou `RETIRADA AUTORIZADA` → `RETIRADO`). Em `AGUARDANDO RETIRADA`, só aceita a matrícula do solicitante; em `RETIRADA AUTORIZADA`, também o documento autorizado |
 
 ### Ordens de Serviço (OSM) e Logística de Peças
 | Método | Rota | Acesso | Descrição |
@@ -206,7 +206,7 @@ Use o endpoint `POST /api/Auth/login` no Swagger e cole o token retornado no bot
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/dashboard` | `Administrativo` | **US-27:** Contagem por status, tempos médios entre etapas e SSLs que expiram em até 2 dias |
 
-> Referência detalhada para os fronts (corpos, respostas, erros): [`contract.md`](contract.md).
+> A referência detalhada para os fronts (corpos, respostas e erros) é o `contract.md`, distribuído à parte (não versionado neste repositório).
 
 ---
 
