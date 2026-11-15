@@ -124,6 +124,10 @@ namespace CPTM.Manutencao.Api.Controllers
             {
                 return BadRequest(new { erro = ex.Message });
             }
+            catch (ArmazenamentoIndisponivelException ex)
+            {
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { erro = ex.Message });
+            }
         }
 
         // REENVIAR SSL devolvida (Apenas Comum dono) - US-06
@@ -142,6 +146,10 @@ namespace CPTM.Manutencao.Api.Controllers
             try
             {
                 return Ok(await _solicitacaoService.ReenviarAsync(id, requisicao, matricula));
+            }
+            catch (ArmazenamentoIndisponivelException ex)
+            {
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { erro = ex.Message });
             }
             catch (SolicitacaoNaoEncontradaException ex)
             {
