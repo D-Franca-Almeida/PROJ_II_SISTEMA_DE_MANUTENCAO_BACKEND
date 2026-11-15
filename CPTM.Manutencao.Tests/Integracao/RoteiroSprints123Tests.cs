@@ -238,5 +238,16 @@ public sealed class RoteiroSprints123Tests : IClassFixture<CptmApiFactory>
         await Passo("88", HttpStatusCode.OK, admin.GetAsync("/api/solicitacoes/10/historico"));
         await Passo("89", HttpStatusCode.OK, tecnico.GetAsync("/api/solicitacoes/1/historico"));
         TemPropriedade("90", await Passo("90", HttpStatusCode.NotFound, admin.GetAsync("/api/solicitacoes/99999/historico")), "erro");
+
+        await Passo("91", HttpStatusCode.Unauthorized, anonimo.GetAsync("/api/dashboard"));
+        await Passo("92", HttpStatusCode.Forbidden, comum.GetAsync("/api/dashboard"));
+        await Passo("93", HttpStatusCode.Forbidden, tecnico.GetAsync("/api/dashboard"));
+        var passo94 = await Passo("94", HttpStatusCode.OK, admin.GetAsync("/api/dashboard"));
+        var porStatus = passo94!.Value.GetProperty("porStatus").EnumerateArray()
+            .ToDictionary(c => c.GetProperty("status").GetString()!, c => c.GetProperty("quantidade").GetInt32());
+        Assert.Equal(passo94.Value.GetProperty("totalSolicitacoes").GetInt32(), porStatus.Values.Sum());
+        Assert.Equal(3, porStatus[StatusSolicitacao.Retirado]);
+        Assert.Equal(3, passo94.Value.GetProperty("temposMedios").GetArrayLength());
+        TemPropriedade("94", passo94, "expiramEmAteDoisDias");
     }
 }
