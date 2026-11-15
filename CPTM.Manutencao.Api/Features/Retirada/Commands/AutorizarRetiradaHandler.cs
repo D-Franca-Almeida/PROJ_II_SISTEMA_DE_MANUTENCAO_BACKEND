@@ -80,7 +80,7 @@ namespace CPTM.Manutencao.Api.Features.Retirada.Commands
             return texto;
         }
 
-        [GeneratedRegex(@"^[A-Za-z0-9./-]+$")]
+        [GeneratedRegex(@"^[./-]*[A-Za-z0-9][A-Za-z0-9./-]*$")]
         private static partial Regex FormatoDocumento();
     }
 }
