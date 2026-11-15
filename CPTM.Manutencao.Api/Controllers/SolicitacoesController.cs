@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using CPTM.Manutencao.Api.Models;
 using CPTM.Manutencao.Api.Services;
 using CPTM.Manutencao.Api.Features.Destino.Commands;
+using CPTM.Manutencao.Api.Features.Retirada.Commands;
 
 namespace CPTM.Manutencao.Api.Controllers
 {
@@ -353,6 +354,21 @@ namespace CPTM.Manutencao.Api.Controllers
 
             return Executar(() => handler.Executar(id, matricula, dto?.Observacao),
                 "Equipamento inutilizado (descarte).", StatusSolicitacao.Inutilizado);
+        }
+
+        // US-24: autorização de retirada por terceiro (Comum dono ou Admin; AGUARDANDO RETIRADA -> RETIRADA AUTORIZADA)
+        [HttpPut("{id:int}/autorizar-retirada")]
+        [Authorize]
+        public IActionResult AutorizarRetirada(int id, [FromServices] IAutorizarRetiradaHandler handler,
+            [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] AutorizarRetiradaRequest? dto = null)
+        {
+            var matricula = User.FindFirst("Matricula")?.Value;
+            var perfil = User.FindFirst("Perfil")?.Value;
+            if (string.IsNullOrEmpty(matricula) || (perfil != "Administrativo" && perfil != "Comum"))
+                return Forbid();
+
+            return Executar(() => handler.Executar(id, dto, matricula, perfil),
+                "Retirada autorizada para o terceiro informado.", StatusSolicitacao.RetiradaAutorizada);
         }
 
         // 🤝 US-11: Protocolo de retirada (AGUARDANDO RETIRADA -> RETIRADO)

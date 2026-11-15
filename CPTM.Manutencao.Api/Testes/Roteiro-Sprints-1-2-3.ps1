@@ -125,6 +125,14 @@ Verificar 58 "PUT /11/inutilizar Admin"                   200 (Chamar "Put" "/ap
 Verificar 59 "PUT /11/liberar-retirada (INUTILIZADO)"     400 (Chamar "Put" "/api/Solicitacoes/11/liberar-retirada" $tokAdmin)
 Verificar 60 "PUT /1/aguardar-retirada Admin"             200 (Chamar "Put" "/api/Solicitacoes/1/aguardar-retirada" $tokAdmin)
 
+Write-Host "== Etapa 10: Autorizacao de retirada por terceiro (US-24) ==" -ForegroundColor Cyan
+$autorizacao = '{ "nome": "Maria Souza", "documento": "123.456.789-00" }'
+Verificar 61 "PUT /1/autorizar-retirada Tecnico"          403 (Chamar "Put" "/api/Solicitacoes/1/autorizar-retirada" $tokTec $autorizacao)
+Verificar 62 "PUT /1/autorizar-retirada sem documento"    400 (Chamar "Put" "/api/Solicitacoes/1/autorizar-retirada" $tokComum '{ "nome": "Maria Souza" }')
+Verificar 63 "PUT /1/autorizar-retirada Comum dono"       200 (Chamar "Put" "/api/Solicitacoes/1/autorizar-retirada" $tokComum $autorizacao)
+Verificar 64 "PUT /1/autorizar-retirada de novo"          400 (Chamar "Put" "/api/Solicitacoes/1/autorizar-retirada" $tokComum $autorizacao)
+Verificar 65 "PUT /10/autorizar-retirada Admin"           200 (Chamar "Put" "/api/Solicitacoes/10/autorizar-retirada" $tokAdmin '{ "nome": "Joao Lima", "documento": "tec999" }')
+
 Write-Host ""
 if ($script:falhas -eq 0) { Write-Host "TODOS OS PASSOS VALIDADOS." -ForegroundColor Green }
 else { Write-Host "$($script:falhas) passo(s) com falha." -ForegroundColor Red; exit 1 }

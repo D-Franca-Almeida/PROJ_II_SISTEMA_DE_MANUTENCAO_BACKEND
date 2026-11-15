@@ -72,6 +72,8 @@ namespace CPTM.Manutencao.Api.Data
                 entidade.HasIndex(s => s.NumeroSsm).IsUnique();
                 entidade.Property(s => s.ObservacaoDestino).HasMaxLength(500);
                 entidade.Property(s => s.IdentificacaoRetirada).HasMaxLength(100);
+                entidade.Property(s => s.AutorizadoNome).HasMaxLength(150);
+                entidade.Property(s => s.AutorizadoDocumento).HasMaxLength(50);
                 entidade.Property(s => s.DataRetirada)
                     .HasConversion(v => v, v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v);
                 entidade.Property(s => s.DataRecebimento)

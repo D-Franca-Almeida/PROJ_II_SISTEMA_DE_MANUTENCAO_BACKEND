@@ -167,5 +167,16 @@ public sealed class RoteiroSprints123Tests : IClassFixture<CptmApiFactory>
         Assert.Equal(StatusSolicitacao.Inutilizado, passo58!.Value.GetProperty("novoStatus").GetString());
         TemPropriedade("59", await Passo("59", HttpStatusCode.BadRequest, admin.PutAsync("/api/Solicitacoes/11/liberar-retirada", null)), "erro");
         TemPropriedade("60", await Passo("60", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/1/aguardar-retirada", null)), "novoStatus");
+
+        const string autorizacao = "{ \"nome\": \"Maria Souza\", \"documento\": \"123.456.789-00\" }";
+        await Passo("61", HttpStatusCode.Forbidden, tecnico.PutAsync("/api/Solicitacoes/1/autorizar-retirada", CptmApiFactory.Json(autorizacao)));
+        TemPropriedade("62", await Passo("62", HttpStatusCode.BadRequest,
+            comum.PutAsync("/api/Solicitacoes/1/autorizar-retirada", CptmApiFactory.Json("{ \"nome\": \"Maria Souza\" }"))), "erro");
+        var passo63 = await Passo("63", HttpStatusCode.OK, comum.PutAsync("/api/Solicitacoes/1/autorizar-retirada", CptmApiFactory.Json(autorizacao)));
+        Assert.Equal(StatusSolicitacao.RetiradaAutorizada, passo63!.Value.GetProperty("novoStatus").GetString());
+        TemPropriedade("64", await Passo("64", HttpStatusCode.BadRequest,
+            comum.PutAsync("/api/Solicitacoes/1/autorizar-retirada", CptmApiFactory.Json(autorizacao))), "erro");
+        TemPropriedade("65", await Passo("65", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/10/autorizar-retirada",
+            CptmApiFactory.Json("{ \"nome\": \"Joao Lima\", \"documento\": \"tec999\" }"))), "novoStatus");
     }
 }
