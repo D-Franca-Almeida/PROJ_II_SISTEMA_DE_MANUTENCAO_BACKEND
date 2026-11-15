@@ -84,6 +84,8 @@ public sealed class AutorizarRetiradaTests : IDisposable
     [InlineData(null, "123")]
     [InlineData("Maria", null)]
     [InlineData("Maria", "12 3")]
+    [InlineData("Maria", "...")]
+    [InlineData("Maria", "-/-")]
     public void Dados_invalidos_400(string? nome, string? documento)
     {
         var s = Criar();
