@@ -176,7 +176,7 @@ Use o endpoint `POST /api/Auth/login` no Swagger e cole o token retornado no bot
 | Método | Rota | Acesso | Descrição |
 | :--- | :--- | :--- | :--- |
 | `POST` | `/api/admin/expiracao/executar` | `Administrativo` | Dispara manualmente a verificação de expiração de SSLs ociosas |
-| `GET` | `/api/admin/eventos-fila` | `Administrativo` | Lista os últimos eventos publicados na fila de mensageria (Login e Mudanças de Status) |
+| `GET` | `/api/admin/eventos-fila` | `Administrativo` | Lista os últimos eventos publicados na fila de mensageria (Login e Mudanças de Status), lidos de um espelho em memória da réplica, não da fila do Azure |
 
 ---
 
@@ -189,6 +189,12 @@ Para conectar sua máquina local à Storage Account real do projeto (`stcptmmanu
 ```powershell
 dotnet user-secrets set "AzureStorage:ConnectionString" "<COLE_A_CONNECTION_STRING_AQUI>" --project CPTM.Manutencao.Api/CPTM.Manutencao.Api.csproj
 ```
+
+Para testar sem conta Azure, use o emulador **Azurite** e `AzureStorage:ConnectionString=UseDevelopmentStorage=true` (passo a passo no roteiro de deploy).
+
+- Connection string malformada: a API não sobe (erro claro no log).
+- Storage fora do ar: login e transições continuam 200 (a falha da fila é logada e o envio fica pausado por 30 s); criar/reenviar SSL com foto responde **503** `{ "erro": "O armazenamento de fotos está indisponível..." }`.
+- Em produção (Container Apps) a connection string vai como secret `storage-conn` lido via `secretref` em `AzureStorage__ConnectionString`, e o container `uploads` precisa de acesso anônimo de leitura a blobs (ver roteiro).
 
 ---
 

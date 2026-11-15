@@ -71,6 +71,7 @@ var azureStorage = builder.Configuration.GetSection("AzureStorage").Get<AzureSto
 builder.Services.AddSingleton(azureStorage);
 if (!string.IsNullOrWhiteSpace(azureStorage.ConnectionString))
 {
+    AzureStorageOptions.ValidarConnectionString(azureStorage.ConnectionString);
     builder.Services.AddSingleton<IFotoStorage, AzureBlobFotoStorage>();
     builder.Services.AddSingleton<INotificacaoQueue, AzureQueueNotificacaoService>();
 }
