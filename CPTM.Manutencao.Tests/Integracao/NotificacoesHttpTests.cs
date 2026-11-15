@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using CPTM.Manutencao.Api.Data;
 using CPTM.Manutencao.Api.Models;
+using CPTM.Manutencao.Api.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -243,6 +244,31 @@ public sealed class NotificacoesHttpTests : IClassFixture<CptmApiFactory>
 
         Assert.Equal(HttpStatusCode.BadRequest, resposta.StatusCode);
         Assert.Empty(DaSolicitacao(sslId));
+    }
+
+    [Fact]
+    public void Expiracao_num_escopo_proprio_como_o_job_notifica_o_solicitante()
+    {
+        int sslId;
+        using (var escopo = _api.Services.CreateScope())
+        {
+            var db = escopo.ServiceProvider.GetRequiredService<ManutencaoDbContext>();
+            var s = new Solicitacao
+            {
+                Descricao = "SSL de teste", Status = StatusSolicitacao.Devolvida, MatriculaSolicitante = "comum123", EquipamentoId = 1,
+                DataAbertura = DateTime.UtcNow.AddDays(-30)
+            };
+            db.Solicitacoes.Add(s);
+            db.SaveChanges();
+            sslId = s.Id;
+        }
+
+        using (var escopoDoJob = _api.Services.CreateScope())
+            escopoDoJob.ServiceProvider.GetRequiredService<IExpiracaoService>().Executar();
+
+        var notificacao = Assert.Single(DaSolicitacao(sslId));
+        Assert.Equal("comum123", notificacao.MatriculaDestino);
+        Assert.Equal($"Sua SSL {sslId} expirou por falta de ação no prazo.", notificacao.Mensagem);
     }
 
     [Fact]
