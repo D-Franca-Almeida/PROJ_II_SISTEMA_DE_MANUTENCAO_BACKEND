@@ -92,6 +92,7 @@ namespace CPTM.Manutencao.Api.Services
         private readonly ISolicitacaoRepository _repositorio;
         private readonly TimeProvider _relogio;
         private readonly INotificacaoQueue? _fila;
+        private List<EventoSistemaMensagem>? _eventosAposCommit;
 
         public WorkflowService(ISolicitacaoRepository repositorio, TimeProvider? relogio = null, INotificacaoQueue? fila = null)
         {
@@ -195,7 +196,7 @@ namespace CPTM.Manutencao.Api.Services
             ordem.Laudo = texto;
             ordem.DataConclusao = _relogio.GetUtcNow().UtcDateTime;
             // Um pedido criado entre a leitura e a gravação também bloqueia: a checagem é refeita no banco, na mesma transação
-            _repositorio.EmTransacao(() =>
+            EmTransacaoPublicandoAoFinal(() =>
             {
                 Transicionar(solicitacao, StatusSolicitacao.Concluida, ordem.MatriculaTecnico, $"OSM {ordem.Id} concluída.");
                 var pendentesAgora = _repositorio.ListarPedidosPendentes(ordem.Id);
@@ -229,7 +230,7 @@ namespace CPTM.Manutencao.Api.Services
             ordem.MotivoNaoExecucao = texto;
             ordem.DataConclusao = agora;
             // Um pedido criado entre a leitura e a gravação ficaria pendente numa OSM encerrada: desfaz tudo e responde 409
-            _repositorio.EmTransacao(() =>
+            EmTransacaoPublicandoAoFinal(() =>
             {
                 Transicionar(solicitacao, StatusSolicitacao.NaoExecutada, ordem.MatriculaTecnico, texto);
                 if (_repositorio.ListarPedidosPendentes(ordem.Id).Count > 0)
@@ -320,7 +321,7 @@ namespace CPTM.Manutencao.Api.Services
             solicitacao.Status = novoStatus;
             _repositorio.Salvar(solicitacao, historico);
 
-            _fila?.Publicar(new EventoSistemaMensagem(
+            PublicarMudancaDeStatus(new EventoSistemaMensagem(
                 "MUDANCA_STATUS",
                 historico.Matricula,
                 solicitacao.Id,
@@ -328,6 +329,32 @@ namespace CPTM.Manutencao.Api.Services
                 historico.StatusNovo,
                 historico.Observacao,
                 historico.Data));
+        }
+
+        private void PublicarMudancaDeStatus(EventoSistemaMensagem evento)
+        {
+            if (_eventosAposCommit is not null)
+                _eventosAposCommit.Add(evento);
+            else
+                _fila?.Publicar(evento);
+        }
+
+        // Transições dentro da transação só publicam depois do commit: um rollback não deixa evento fantasma na fila
+        private void EmTransacaoPublicandoAoFinal(Action acao)
+        {
+            var pendentes = new List<EventoSistemaMensagem>();
+            _eventosAposCommit = pendentes;
+            try
+            {
+                _repositorio.EmTransacao(acao);
+            }
+            finally
+            {
+                _eventosAposCommit = null;
+            }
+
+            foreach (var evento in pendentes)
+                _fila?.Publicar(evento);
         }
 
         public const int TamanhoMaximoObservacao = 500;
