@@ -441,10 +441,11 @@ public sealed class PedidoPecaTests : IDisposable
     {
         var (sslId, ordemId) = Osm();
         int criado = 0;
+        var fila = new InMemoryNotificacaoQueue();
         using var contextoB = NovoContexto();
         var workflowB = new WorkflowService(
             new RepositorioComPedidoAposLeitura(new SolicitacaoRepository(contextoB, _relogio), () => criado = Pedir(ordemId, "Motor").Id),
-            _relogio);
+            _relogio, fila);
 
         var ex = Assert.Throws<ConclusaoBloqueadaException>(() => workflowB.ConcluirManutencao(sslId, "Laudo", "tec123"));
 
@@ -454,6 +455,7 @@ public sealed class PedidoPecaTests : IDisposable
         Assert.Null(ordem.Laudo);
         Assert.Null(ordem.DataConclusao);
         Assert.Empty(_db.HistoricoStatus.Where(h => h.SolicitacaoId == sslId));
+        Assert.Empty(fila.ObterRecentes());
     }
 
     [Fact]
@@ -462,10 +464,11 @@ public sealed class PedidoPecaTests : IDisposable
         var (sslId, ordemId) = Osm();
         var anterior = Pedir(ordemId, "Correia").Id;
         int criado = 0;
+        var fila = new InMemoryNotificacaoQueue();
         using var contextoB = NovoContexto();
         var workflowB = new WorkflowService(
             new RepositorioComPedidoAposLeitura(new SolicitacaoRepository(contextoB, _relogio), () => criado = Pedir(ordemId, "Motor").Id),
-            _relogio);
+            _relogio, fila);
 
         Assert.Throws<ConflitoDeConcorrenciaException>(() => workflowB.NaoExecutarManutencao(sslId, "Sem conserto", "tec123"));
 
@@ -474,6 +477,43 @@ public sealed class PedidoPecaTests : IDisposable
         Assert.Equal(StatusPedidoPeca.Solicitado, Pedido(criado).Status);
         Assert.Null(_db.OrdensServico.AsNoTracking().Single(o => o.Id == ordemId).MotivoNaoExecucao);
         Assert.Empty(_db.HistoricoStatus.Where(h => h.SolicitacaoId == sslId));
+        Assert.Empty(fila.ObterRecentes());
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Encerrar_publica_mudanca_de_status_so_depois_do_commit(bool concluir)
+    {
+        var (sslId, _) = Osm();
+        var fila = new FilaQueRegistraTransacao(_db);
+        var workflow = new WorkflowService(new SolicitacaoRepository(_db, _relogio), _relogio, fila);
+
+        if (concluir)
+            workflow.ConcluirManutencao(sslId, "Laudo", "tec123");
+        else
+            workflow.NaoExecutarManutencao(sslId, "Sem conserto", "tec123");
+
+        var (evento, transacaoAberta) = Assert.Single(fila.Publicados);
+        Assert.False(transacaoAberta);
+        Assert.Equal("MUDANCA_STATUS", evento.TipoEvento);
+        Assert.Equal(sslId, evento.SolicitacaoId);
+        Assert.Equal(concluir ? StatusSolicitacao.Concluida : StatusSolicitacao.NaoExecutada, evento.StatusNovo);
+    }
+
+    private sealed class FilaQueRegistraTransacao : INotificacaoQueue
+    {
+        private readonly ManutencaoDbContext _db;
+
+        public FilaQueRegistraTransacao(ManutencaoDbContext db) => _db = db;
+
+        public List<(EventoSistemaMensagem Evento, bool TransacaoAberta)> Publicados { get; } = new();
+
+        public void Publicar(EventoSistemaMensagem evento) =>
+            Publicados.Add((evento, _db.Database.CurrentTransaction is not null));
+
+        public IReadOnlyList<EventoSistemaMensagem> ObterRecentes(int limite = 50) =>
+            Publicados.Select(p => p.Evento).ToList();
     }
 
     private sealed class RepositorioComPedidoAposLeitura : ISolicitacaoRepository
