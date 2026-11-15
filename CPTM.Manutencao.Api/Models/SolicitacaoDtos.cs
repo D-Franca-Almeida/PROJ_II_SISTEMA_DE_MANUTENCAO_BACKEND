@@ -58,5 +58,10 @@ namespace CPTM.Manutencao.Api.Models
         int? DiasParaExpirar = null,
         string? NumeroSsm = null,
         DateTime? DataRecebimento = null,
-        int? OrdemServicoId = null);
+        int? OrdemServicoId = null,
+        string? ObservacaoDestino = null,
+        string? AutorizadoNome = null,
+        string? AutorizadoDocumento = null,
+        string? RetiradoPorDocumento = null,
+        DateTime? DataRetirada = null);
 }

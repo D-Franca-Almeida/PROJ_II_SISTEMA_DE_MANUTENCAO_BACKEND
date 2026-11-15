@@ -151,20 +151,20 @@ public sealed class FechamentoRetiradaHttpTests : IClassFixture<CptmApiFactory>
         using var admin = await _api.CriarClienteLogadoAsync("admin123");
 
         using var resposta = await admin.PutAsync($"/api/solicitacoes/{id}/retirar",
-            CptmApiFactory.Json("{ \"identificacaoRecebedor\": \"  CPF 123.456.789-00 - Matrícula CPTM 9988  \" }"));
+            CptmApiFactory.Json("{ \"identificacaoRecebedor\": \"  comum123  \" }"));
 
         Assert.Equal(HttpStatusCode.OK, resposta.StatusCode);
         Assert.Equal("RETIRADO", (await LerJson(resposta)).GetProperty("novoStatus").GetString());
         var (s, historico) = Estado(id);
         Assert.Equal("RETIRADO", s.Status);
-        Assert.Equal("CPF 123.456.789-00 - Matrícula CPTM 9988", s.IdentificacaoRetirada);
+        Assert.Equal("comum123", s.IdentificacaoRetirada);
         Assert.NotNull(s.DataRetirada);
         Assert.Equal(DateTimeKind.Utc, s.DataRetirada!.Value.Kind);
         var h = Assert.Single(historico);
         Assert.Equal("AGUARDANDO RETIRADA", h.StatusAnterior);
         Assert.Equal("RETIRADO", h.StatusNovo);
         Assert.Equal("admin123", h.Matricula);
-        Assert.DoesNotContain("123.456.789", h.Observacao ?? string.Empty);
+        Assert.DoesNotContain("comum123", h.Observacao ?? string.Empty);
     }
 
     [Theory]
@@ -196,7 +196,7 @@ public sealed class FechamentoRetiradaHttpTests : IClassFixture<CptmApiFactory>
         using var admin = await _api.CriarClienteLogadoAsync("admin123");
 
         using var resposta = await admin.PutAsync($"/api/solicitacoes/{id}/retirar",
-            CptmApiFactory.Json("{ \"identificacaoRecebedor\": \"9988\" }"));
+            CptmApiFactory.Json("{ \"identificacaoRecebedor\": \"comum123\" }"));
 
         Assert.Equal(HttpStatusCode.BadRequest, resposta.StatusCode);
         Assert.Equal(statusAtual, Estado(id).Solicitacao.Status);
@@ -211,7 +211,7 @@ public sealed class FechamentoRetiradaHttpTests : IClassFixture<CptmApiFactory>
         using var cliente = await _api.CriarClienteLogadoAsync(matricula);
 
         using var resposta = await cliente.PutAsync($"/api/solicitacoes/{id}/retirar",
-            CptmApiFactory.Json("{ \"identificacaoRecebedor\": \"9988\" }"));
+            CptmApiFactory.Json("{ \"identificacaoRecebedor\": \"comum123\" }"));
 
         Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
         Assert.Equal("AGUARDANDO RETIRADA", Estado(id).Solicitacao.Status);
@@ -228,15 +228,15 @@ public sealed class FechamentoRetiradaHttpTests : IClassFixture<CptmApiFactory>
 
         Assert.Equal(HttpStatusCode.OK, (await admin.PutAsync($"/api/solicitacoes/{feliz}/aguardar-retirada", null)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await admin.PutAsync($"/api/solicitacoes/{feliz}/retirar",
-            CptmApiFactory.Json("{ \"identificacaoRecebedor\": \"9988\" }"))).StatusCode);
+            CptmApiFactory.Json("{ \"identificacaoRecebedor\": \"comum123\" }"))).StatusCode);
         // retirar de novo: já RETIRADO
         Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsync($"/api/solicitacoes/{feliz}/retirar",
-            CptmApiFactory.Json("{ \"identificacaoRecebedor\": \"9988\" }"))).StatusCode);
+            CptmApiFactory.Json("{ \"identificacaoRecebedor\": \"comum123\" }"))).StatusCode);
         Assert.Equal(2, Estado(feliz).Historico.Count);
 
         Assert.Equal(HttpStatusCode.OK, (await admin.PutAsync($"/api/solicitacoes/{condenada}/sem-reparo", null)).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsync($"/api/solicitacoes/{condenada}/retirar",
-            CptmApiFactory.Json("{ \"identificacaoRecebedor\": \"9988\" }"))).StatusCode);
+            CptmApiFactory.Json("{ \"identificacaoRecebedor\": \"comum123\" }"))).StatusCode);
         Assert.Equal("SEM REPARO", Estado(condenada).Solicitacao.Status);
     }
 

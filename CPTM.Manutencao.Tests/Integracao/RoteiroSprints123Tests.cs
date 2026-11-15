@@ -178,5 +178,20 @@ public sealed class RoteiroSprints123Tests : IClassFixture<CptmApiFactory>
             comum.PutAsync("/api/Solicitacoes/1/autorizar-retirada", CptmApiFactory.Json(autorizacao))), "erro");
         TemPropriedade("65", await Passo("65", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/10/autorizar-retirada",
             CptmApiFactory.Json("{ \"nome\": \"Joao Lima\", \"documento\": \"tec999\" }"))), "novoStatus");
+
+        static StringContent Recebedor(string documento) => CptmApiFactory.Json($"{{ \"identificacaoRecebedor\": \"{documento}\" }}");
+        await Passo("66", HttpStatusCode.Forbidden, comum.PutAsync("/api/Solicitacoes/1/retirar", Recebedor("12345678900")));
+        TemPropriedade("67", await Passo("67", HttpStatusCode.BadRequest, admin.PutAsync("/api/Solicitacoes/1/retirar", Recebedor("99999999999"))), "erro");
+        var passo68 = await Passo("68", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/1/retirar", Recebedor("12345678900")));
+        Assert.Equal(StatusSolicitacao.Retirado, passo68!.Value.GetProperty("novoStatus").GetString());
+        TemPropriedade("69", await Passo("69", HttpStatusCode.BadRequest, admin.PutAsync("/api/Solicitacoes/6/retirar", Recebedor("12345678900"))), "erro");
+        TemPropriedade("70", await Passo("70", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/6/retirar", Recebedor("comum123"))), "novoStatus");
+        TemPropriedade("71", await Passo("71", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/10/retirar", Recebedor("comum123"))), "novoStatus");
+        TemPropriedade("72", await Passo("72", HttpStatusCode.BadRequest, admin.PutAsync("/api/Solicitacoes/1/retirar", Recebedor("12345678900"))), "erro");
+        var passo73 = await Passo("73", HttpStatusCode.OK, comum.GetAsync("/api/Solicitacoes/1"));
+        Assert.Equal(StatusSolicitacao.Retirado, passo73!.Value.GetProperty("status").GetString());
+        Assert.Equal("12345678900", passo73.Value.GetProperty("retiradoPorDocumento").GetString());
+        TemPropriedade("73", passo73, "dataRetirada");
+        TemPropriedade("74", await Passo("74", HttpStatusCode.BadRequest, admin.PutAsync("/api/Solicitacoes/11/retirar", Recebedor("comum123"))), "erro");
     }
 }
