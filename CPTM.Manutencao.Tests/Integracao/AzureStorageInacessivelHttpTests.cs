@@ -61,4 +61,26 @@ public sealed class AzureStorageInacessivelHttpTests : IDisposable
         using var json = JsonDocument.Parse(await resposta.Content.ReadAsStringAsync());
         Assert.Contains("indisponível", json.RootElement.GetProperty("erro").GetString());
     }
+
+    [Fact]
+    public async Task Reenviar_com_foto_e_blob_inacessivel_responde_503_e_a_ssl_continua_devolvida()
+    {
+        using var admin = await _api.CriarClienteLogadoAsync("admin123");
+        using var devolvida = await admin.PutAsync("/api/solicitacoes/2/devolver", CptmApiFactory.Json("{\"motivo\":\"Foto escura\"}"));
+        Assert.Equal(HttpStatusCode.OK, devolvida.StatusCode);
+        using var comum = await _api.CriarClienteLogadoAsync("comum123");
+        using var form = new MultipartFormDataContent();
+        var foto = new ByteArrayContent(Png);
+        foto.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        form.Add(foto, "foto", "foto.png");
+
+        using var resposta = await comum.PutAsync("/api/solicitacoes/2/reenviar", form);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, resposta.StatusCode);
+        using var json = JsonDocument.Parse(await resposta.Content.ReadAsStringAsync());
+        Assert.Contains("indisponível", json.RootElement.GetProperty("erro").GetString());
+        using var detalhe = await admin.GetAsync("/api/solicitacoes/2");
+        using var ssl = JsonDocument.Parse(await detalhe.Content.ReadAsStringAsync());
+        Assert.Equal("DEVOLVIDA", ssl.RootElement.GetProperty("status").GetString());
+    }
 }
