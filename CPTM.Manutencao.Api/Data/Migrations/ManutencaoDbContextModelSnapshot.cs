@@ -537,6 +537,14 @@ namespace CPTM.Manutencao.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("AutorizadoDocumento")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AutorizadoNome")
+                        .HasMaxLength(150)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("DataAbertura")
                         .HasColumnType("TEXT");
 
