@@ -193,5 +193,34 @@ public sealed class RoteiroSprints123Tests : IClassFixture<CptmApiFactory>
         Assert.Equal("12345678900", passo73.Value.GetProperty("retiradoPorDocumento").GetString());
         TemPropriedade("73", passo73, "dataRetirada");
         TemPropriedade("74", await Passo("74", HttpStatusCode.BadRequest, admin.PutAsync("/api/Solicitacoes/11/retirar", Recebedor("comum123"))), "erro");
+
+        static List<string> Mensagens(JsonElement? corpo) =>
+            corpo!.Value.GetProperty("notificacoes").EnumerateArray().Select(n => n.GetProperty("mensagem").GetString()!).ToList();
+        await Passo("75", HttpStatusCode.Unauthorized, anonimo.GetAsync("/api/notificacoes"));
+        var passo76 = await Passo("76", HttpStatusCode.OK, comum.GetAsync("/api/notificacoes"));
+        var doComum = Mensagens(passo76);
+        Assert.Contains("Sua SSL 1 foi aprovada. Leve o equipamento à oficina.", doComum);
+        Assert.Contains("Sua SSL 2 foi devolvida para correção. Veja o motivo e reenvie.", doComum);
+        Assert.Contains("O equipamento da SSL 6 está pronto para retirada.", doComum);
+        Assert.Contains("O equipamento da SSL 1 foi retirado. Ciclo encerrado.", doComum);
+        Assert.DoesNotContain(doComum, m => m.Contains("12345678900") || m.Contains("123.456.789-00") || m.Contains("tec999"));
+        var naoLidasDoComum = passo76!.Value.GetProperty("naoLidas").GetInt32();
+        Assert.Equal(doComum.Count, naoLidasDoComum);
+        var doAdmin = Mensagens(await Passo("77", HttpStatusCode.OK, admin.GetAsync("/api/notificacoes")));
+        Assert.Contains("Novo pedido de peça na OSM 1 (SSL 10): Capacitor 100uF x2.", doAdmin);
+        Assert.Contains("A OSM da SSL 10 foi concluída. Defina o destino do equipamento.", doAdmin);
+        Assert.Contains("A OSM da SSL 6 não foi executada. Defina o destino do equipamento.", doAdmin);
+        var doTecnico = Mensagens(await Passo("78", HttpStatusCode.OK, tecnico.GetAsync("/api/notificacoes")));
+        Assert.Contains($"A peça do pedido {pedidoId} chegou: Capacitor 100uF x2 (OSM 1, SSL 10).", doTecnico);
+        var notificacaoDoComum = passo76.Value.GetProperty("notificacoes")[0].GetProperty("id").GetInt32();
+        await Passo("79", HttpStatusCode.Forbidden, tecnico.PutAsync($"/api/notificacoes/{notificacaoDoComum}/lida", null));
+        var passo80 = await Passo("80", HttpStatusCode.OK, comum.PutAsync($"/api/notificacoes/{notificacaoDoComum}/lida", null));
+        Assert.True(passo80!.Value.GetProperty("lida").GetBoolean());
+        TemPropriedade("80", passo80, "dataLeitura");
+        var passo81 = await Passo("81", HttpStatusCode.OK, comum.GetAsync("/api/notificacoes?naoLidas=true"));
+        Assert.Equal(naoLidasDoComum - 1, passo81!.Value.GetProperty("naoLidas").GetInt32());
+        Assert.DoesNotContain(passo81.Value.GetProperty("notificacoes").EnumerateArray(), n => n.GetProperty("id").GetInt32() == notificacaoDoComum);
+        TemPropriedade("82", await Passo("82", HttpStatusCode.NotFound, comum.PutAsync("/api/notificacoes/99999/lida", null)), "erro");
+        await Passo("83", HttpStatusCode.BadRequest, comum.GetAsync("/api/notificacoes?naoLidas=talvez"));
     }
 }

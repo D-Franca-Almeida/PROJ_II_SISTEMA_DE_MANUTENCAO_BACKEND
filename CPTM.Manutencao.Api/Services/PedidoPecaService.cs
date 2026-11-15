@@ -29,11 +29,13 @@ namespace CPTM.Manutencao.Api.Services
 
         private readonly IPedidoPecaRepository _repositorio;
         private readonly TimeProvider _relogio;
+        private readonly IGeradorDeNotificacoes? _notificacoes;
 
-        public PedidoPecaService(IPedidoPecaRepository repositorio, TimeProvider? relogio = null)
+        public PedidoPecaService(IPedidoPecaRepository repositorio, TimeProvider? relogio = null, IGeradorDeNotificacoes? notificacoes = null)
         {
             _repositorio = repositorio;
             _relogio = relogio ?? TimeProvider.System;
+            _notificacoes = notificacoes;
         }
 
         public PedidoPecaDto Criar(int ordemServicoId, CriarPedidoPecaRequest requisicao, string matriculaTecnico)
@@ -65,6 +67,7 @@ namespace CPTM.Manutencao.Api.Services
             ordem.Pedidos.Add(pedido);
             // UPDATE ... WHERE Status = 'EM MANUTENCAO': se a OSM foi encerrada desde a leitura, nada é gravado (409)
             _repositorio.MarcarStatusDaSolicitacaoComoLido(ordem.Solicitacao);
+            _notificacoes?.GerarDoPedidoCriado(pedido, ordem);
             _repositorio.Salvar(pedido);
             return _repositorio.ObterDto(pedido.Id);
         }
@@ -119,6 +122,7 @@ namespace CPTM.Manutencao.Api.Services
             pedido.Status = StatusPedidoPeca.Recebido;
             pedido.MatriculaRecebimento = matriculaAdmin.Trim();
             pedido.DataRecebimento = Agora();
+            _notificacoes?.GerarDoPedidoRecebido(pedido, pedido.OrdemServico!);
             _repositorio.Salvar(pedido);
             return _repositorio.ObterDto(id);
         }

@@ -7,6 +7,8 @@ using CPTM.Manutencao.Api.Services;
 using CPTM.Manutencao.Api.Data;
 using CPTM.Manutencao.Api.Features.Destino.Commands;
 using CPTM.Manutencao.Api.Features.Retirada.Commands;
+using CPTM.Manutencao.Api.Features.Notificacoes.Commands;
+using CPTM.Manutencao.Api.Features.Notificacoes.Queries;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -39,6 +41,10 @@ builder.Services.AddScoped<IPedidoPecaService, PedidoPecaService>();
 builder.Services.AddScoped<ISolicitacaoService, SolicitacaoService>();
 builder.Services.AddScoped<IInutilizarEquipamentoHandler, InutilizarEquipamentoHandler>();
 builder.Services.AddScoped<IAutorizarRetiradaHandler, AutorizarRetiradaHandler>();
+builder.Services.AddScoped<INotificacaoRepository, NotificacaoRepository>();
+builder.Services.AddScoped<IGeradorDeNotificacoes, GeradorDeNotificacoes>();
+builder.Services.AddScoped<IListarNotificacoesHandler, ListarNotificacoesHandler>();
+builder.Services.AddScoped<IMarcarNotificacaoComoLidaHandler, MarcarNotificacaoComoLidaHandler>();
 
 // Expiração (US-20): prazo e agendamento em Prazos:*; o relógio é injetável (TimeProvider) para os testes.
 var prazos = builder.Configuration.GetSection("Prazos").Get<PrazosOptions>() ?? new PrazosOptions();
