@@ -11,14 +11,14 @@ API RESTful em **.NET 10** responsável por gerenciar o ciclo de vida completo d
 
 - **.NET 10 / ASP.NET Core Web API** (C#)
 - **Entity Framework Core 10** com suporte a múltiplos provedores (`Sqlite` para desenvolvimento/testes e `Oracle` 19c para homologação via `Database:Provider`)
-- **Autenticação JWT (`Bearer`) e Autorização RBAC** em 3 perfis: `Comum`, `Tecnico` e `Administrativo` (senhas com hash `PBKDF2` e proteção contra *timing attack*)
+- **Autenticação JWT (`Bearer`) e Autorização RBAC** em 3 perfis: `Comum`, `Tecnico` e `Administrativo` (senhas com hash `PBKDF2` e proteção contra *timing attack*). O token expira em 8 h (fixas no código), sem refresh token
 - **Controle de Concorrência Otimista:** Coluna `Status` como *Concurrency Token* em `SOLICITACOES` e `PEDIDO_PECA` (retorna `409 Conflict` em corridas simultâneas)
 - **Auditoria Completa (US-16):** Toda mudança de estado grava automaticamente uma linha em `HISTORICO_STATUS` na mesma transação
 - **Armazenamento e Mensageria em Nuvem (Microsoft Azure):**
   - **Azure Blob Storage (`AzureBlobFotoStorage`):** Armazena as fotos das SSLs no container `uploads` da Storage Account `stcptmmanut2026` (com *fallback* automático para disco local quando a connection string não está configurada)
   - **Azure Queue Storage (`AzureQueueNotificacaoService`):** Publica eventos JSON na fila `eventos-manutencao` a cada tentativa de login (`LOGIN_SUCESSO` / `LOGIN_FALHA`) e a cada transição de status (`MUDANCA_STATUS`)
-- **Background Service (US-20):** Job periódico (`ExpiracaoBackgroundService`) que expira solicitações `DEVOLVIDA` ou `APROVADA` sem movimentação após o prazo configurável (padrão: 10 dias)
-- **Testes Automatizados (TDD):** **384 testes** (`xUnit` + `WebApplicationFactory` + `Coverlet`) executados em pipeline **GitHub Actions**
+- **Background Service (US-20):** Job periódico (`ExpiracaoBackgroundService`) que expira solicitações `DEVOLVIDA` ou `APROVADA` sem movimentação após o prazo configurável (padrão: 10 dias). Roda **uma vez ao subir** e depois a cada `Prazos:IntervaloMinutos`; fica desligado em Development (`Prazos:ExecucaoAutomatica=false`), onde a demonstração é feita via `POST /api/admin/expiracao/executar`
+- **Testes Automatizados (TDD):** **588 testes** (`xUnit` + `WebApplicationFactory` + `Coverlet`) executados em pipeline **GitHub Actions**
 - **Conteinerização e Nuvem:** `Dockerfile` multi-stage (usuário não-root), `docker-compose.yml`, endpoint `/health` e roteiro de deploy para **Microsoft Azure Container Apps**
 
 ---
@@ -49,10 +49,21 @@ stateDiagram-v2
     EM_MANUTENCAO --> CONCLUIDA : PUT /concluir (Tecnico dono + Laudo)
     EM_MANUTENCAO --> NAO_EXECUTADA : PUT /nao-executar (Tecnico dono + Motivo)
 
-    CONCLUIDA --> AGUARDANDO_RETIRADA : PUT /aguardar-retirada (Admin - US-10)
+    CONCLUIDA --> AGUARDANDO_RETIRADA : PUT /liberar-retirada (alias /aguardar-retirada) (Admin - US-10)
     CONCLUIDA --> SEM_REPARO : PUT /sem-reparo (Admin - US-10)
 
-    AGUARDANDO_RETIRADA --> RETIRADO : PUT /retirar (Admin + CPF/Matricula - US-11)
+    NAO_EXECUTADA --> AGUARDANDO_RETIRADA : PUT /liberar-retirada (Admin - US-10)
+    SEM_REPARO --> AGUARDANDO_RETIRADA : PUT /liberar-retirada (Admin - US-10)
+    SEM_REPARO --> INUTILIZADO : PUT /inutilizar (Admin - US-10)
+
+    AGUARDANDO_RETIRADA --> RETIRADA_AUTORIZADA : PUT /autorizar-retirada (Comum dono/Admin - US-24)
+    AGUARDANDO_RETIRADA --> RETIRADO : PUT /retirar (Admin + matricula do solicitante - US-11)
+    RETIRADA_AUTORIZADA --> RETIRADO : PUT /retirar (Admin + matricula do solicitante ou documento autorizado - US-11)
+
+    CANCELADA --> [*]
+    EXPIRADA --> [*]
+    INUTILIZADO --> [*]
+    RETIRADO --> [*]
 ```
 
 ---
@@ -63,12 +74,13 @@ stateDiagram-v2
 ├── CPTM.Manutencao.Api/
 │   ├── Controllers/          # Endpoints HTTP REST e políticas RBAC
 │   ├── Data/                 # ManutencaoDbContext, Repositories, HealthCheck, Seed (DadosIniciais) e Migrations
+│   ├── Features/             # Fatias verticais (Destino, Retirada, Notificações, Histórico, Dashboard) com Commands/ e Queries/
 │   ├── Models/               # Entidades de domínio, constantes de status e DTOs
 │   ├── Services/             # Regras de negócio (WorkflowService, SolicitacaoService, PedidoPecaService, AuthService, ExpiracaoService, FotoStorage)
 │   └── Program.cs            # DI, JWT, CORS, Swagger, HealthChecks e aplicação automática de Migrations
 ├── CPTM.Manutencao.Tests/
-│   ├── Integracao/           # 13 suítes de testes HTTP ponta a ponta (WebApplicationFactory)
-│   └── *Tests.cs             # 8 suítes de testes unitários de serviços e domínio
+│   ├── Integracao/           # 23 suítes de testes HTTP ponta a ponta (WebApplicationFactory)
+│   └── *Tests.cs             # 17 arquivos de testes unitários de serviços e domínio
 ├── deploy/azure/             # Roteiro passo a passo de deploy no Azure Container Apps
 ├── .github/workflows/        # Pipelines de CI (build + testes + cobertura) e CD (Azure)
 ├── Dockerfile                # Build multi-stage .NET 10
@@ -95,9 +107,9 @@ dotnet run --project CPTM.Manutencao.Api
 - **Swagger UI:** `http://localhost:5203/swagger`
 - **Health Check:** `http://localhost:5203/health`
 
-> Ao iniciar em ambiente `Development`, a API aplica automaticamente todas as migrations no banco SQLite local e popula a massa de dados inicial (`DadosIniciais.cs`).
+> Ao iniciar em ambiente `Development`, a API aplica automaticamente todas as migrations no banco SQLite local e popula a massa de dados inicial (`DadosIniciais.cs`). Com `Database:RecriarAoIniciar=true` (padrão em Development), o banco é recriado a cada execução.
 
-### 2. Executar a Suíte de Testes (383 testes)
+### 2. Executar a Suíte de Testes (588 testes)
 
 ```powershell
 dotnet test CPTM.Manutencao.Tests
@@ -113,6 +125,8 @@ docker compose up --build
 - **Swagger no Container:** `http://localhost:8080/swagger`
 - **Health Check no Container:** `http://localhost:8080/health`
 
+> O container roda como `Production`: o banco persiste no volume `cptm-data` e não é recriado a cada subida, e as SSLs 8 e 9 expiram no primeiro boot. `docker compose down -v` volta à massa inicial.
+
 ---
 
 ## 🔐 Credenciais Padrão (Carga Inicial / Seed)
@@ -121,9 +135,9 @@ Use o endpoint `POST /api/Auth/login` no Swagger e cole o token retornado no bot
 
 | Perfil | Matrícula | Senha | Permissões Principais |
 | :--- | :--- | :--- | :--- |
-| **Administrativo** | `admin123` | `senha` | Fila geral, aprovar, devolver, cancelar, receber na oficina (gerar SSM), logística de peças, definir destino (`aguardar-retirada` / `sem-reparo`) e protocolo de retirada (`retirar`) |
+| **Administrativo** | `admin123` | `senha` | Fila geral, aprovar, devolver, cancelar, receber na oficina (gerar SSM), logística de peças, definir destino (`liberar-retirada` / `sem-reparo` / `inutilizar`), protocolo de retirada (`retirar`), autorizar terceiro a retirar (`autorizar-retirada`) e dashboard |
 | **Técnico** | `tec123` | `senha` | Fila de recebidas, iniciar manutenção (abrir OSM), solicitar/cancelar peças, concluir OSM com laudo ou registrar não execução |
-| **Comum** | `comum123` | `senha` | Abrir SSL com foto, consultar minhas solicitações, corrigir/reenviar devolvidas e cancelar própria solicitação (até `APROVADA`) |
+| **Comum** | `comum123` | `senha` | Abrir SSL com foto, consultar minhas solicitações, corrigir/reenviar devolvidas, cancelar própria solicitação (até `APROVADA`) e autorizar terceiro a retirar (US-24) |
 
 ---
 
@@ -139,7 +153,7 @@ Use o endpoint `POST /api/Auth/login` no Swagger e cole o token retornado no bot
 | Método | Rota | Acesso | Descrição |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/estacoes` | Autenticado | Lista as estações e linhas da CPTM |
-| `GET` | `/api/equipamentos` | Autenticado | Lista equipamentos (filtro opcional `?estacaoId=`) |
+| `GET` | `/api/equipamentos` | Autenticado | Lista os equipamentos de uma estação (`?estacaoId=` **obrigatório**; 400 sem ele, 404 com estação inexistente) |
 
 ### Solicitações de Serviço Local (SSL)
 | Método | Rota | Acesso | Descrição |
@@ -147,7 +161,8 @@ Use o endpoint `POST /api/Auth/login` no Swagger e cole o token retornado no bot
 | `GET` | `/api/Solicitacoes` | `Administrativo` | Lista todas as SSLs (filtro opcional `?status=`) com cálculo de dias para expirar |
 | `GET` | `/api/Solicitacoes/recebidas` | `Tecnico` | Fila da oficina: lista SSLs com status `RECEBIDA` (mais antigas primeiro) |
 | `GET` | `/api/Solicitacoes/minhas` | Autenticado | Lista as SSLs abertas pelo usuário logado |
-| `GET` | `/api/Solicitacoes/{id}` | Autenticado | Detalhe completo da SSL + linha do tempo de `historico` |
+| `GET` | `/api/Solicitacoes/{id}` | `Comum` (só a própria) / `Administrativo` / `Tecnico` | Detalhe completo da SSL + linha do tempo de `historico` |
+| `GET` | `/api/Solicitacoes/{id}/historico` | Dono / `Administrativo` / técnico da OSM | **US-26:** Linha do tempo da SSL em ordem cronológica |
 | `POST` | `/api/Solicitacoes` | `Comum` | Abre nova SSL (`multipart/form-data` com `equipamentoId`, `descricao` e `foto` JPG/PNG até 5 MB) |
 | `PUT` | `/api/Solicitacoes/{id}/reenviar` | `Comum` (dono) | Corrige descrição e/ou foto de SSL `DEVOLVIDA` → `REENVIADA` |
 | `PUT` | `/api/Solicitacoes/{id}/aprovar` | `Administrativo` | Aprova na triagem (`SOLICITADA`/`REENVIADA` → `APROVADA`) |
@@ -157,9 +172,11 @@ Use o endpoint `POST /api/Auth/login` no Swagger e cole o token retornado no bot
 | `PUT` | `/api/Solicitacoes/{id}/iniciar-manutencao` | `Tecnico` | Assume equipamento na oficina e abre a OSM (`RECEBIDA` → `EM MANUTENCAO`) |
 | `PUT` | `/api/Solicitacoes/{id}/concluir` | `Tecnico` (dono OSM) | Conclui a OSM com laudo técnico; bloqueia se houver pedido de peça pendente (`→ CONCLUIDA`) |
 | `PUT` | `/api/Solicitacoes/{id}/nao-executar` | `Tecnico` (dono OSM) | Encerra OSM como não executada com motivo e cancela peças pendentes (`→ NAO EXECUTADA`) |
-| `PUT` | `/api/Solicitacoes/{id}/aguardar-retirada` | `Administrativo` | **US-10:** Libera equipamento consertado para busca pela estação (`CONCLUIDA` → `AGUARDANDO RETIRADA`) |
+| `PUT` | `/api/Solicitacoes/{id}/liberar-retirada` (alias `aguardar-retirada`) | `Administrativo` | **US-10:** Libera equipamento para busca pela estação, com observação opcional (`CONCLUIDA` / `NAO EXECUTADA` / `SEM REPARO` → `AGUARDANDO RETIRADA`) |
 | `PUT` | `/api/Solicitacoes/{id}/sem-reparo` | `Administrativo` | **US-10:** Classifica equipamento como perda total/baixa técnica (`CONCLUIDA` → `SEM REPARO`) |
-| `PUT` | `/api/Solicitacoes/{id}/retirar` | `Administrativo` | **US-11:** Registra protocolo final de retirada com CPF/matrícula do recebedor (`AGUARDANDO RETIRADA` → `RETIRADO`) |
+| `PUT` | `/api/Solicitacoes/{id}/inutilizar` | `Administrativo` | **US-10:** Descarte do equipamento (`SEM REPARO` → `INUTILIZADO`) |
+| `PUT` | `/api/Solicitacoes/{id}/autorizar-retirada` | `Comum` (dono) / `Administrativo` | **US-24:** Autoriza terceiro a retirar, com `{ nome, documento }` (`AGUARDANDO RETIRADA` → `RETIRADA AUTORIZADA`) |
+| `PUT` | `/api/Solicitacoes/{id}/retirar` | `Administrativo` | **US-11:** Registra protocolo final de retirada com `{ "identificacaoRecebedor": "..." }` (`AGUARDANDO RETIRADA` ou `RETIRADA AUTORIZADA` → `RETIRADO`). Em `AGUARDANDO RETIRADA`, só aceita a matrícula do solicitante; em `RETIRADA AUTORIZADA`, também o documento autorizado |
 
 ### Ordens de Serviço (OSM) e Logística de Peças
 | Método | Rota | Acesso | Descrição |
@@ -176,7 +193,20 @@ Use o endpoint `POST /api/Auth/login` no Swagger e cole o token retornado no bot
 | Método | Rota | Acesso | Descrição |
 | :--- | :--- | :--- | :--- |
 | `POST` | `/api/admin/expiracao/executar` | `Administrativo` | Dispara manualmente a verificação de expiração de SSLs ociosas |
-| `GET` | `/api/admin/eventos-fila` | `Administrativo` | Lista os últimos eventos publicados na fila de mensageria (Login e Mudanças de Status) |
+| `GET` | `/api/admin/eventos-fila` | `Administrativo` | Lista os últimos eventos publicados na fila de mensageria (Login e Mudanças de Status), lidos de um espelho em memória da réplica, não da fila do Azure |
+
+### Notificações
+| Método | Rota | Acesso | Descrição |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/notificacoes` | Autenticado | **US-25:** Lista as notificações do usuário (`?naoLidas=`); retorna `{ naoLidas, notificacoes }` |
+| `PUT` | `/api/notificacoes/{id}/lida` | Destinatário | **US-25:** Marca a notificação como lida |
+
+### Dashboard
+| Método | Rota | Acesso | Descrição |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/dashboard` | `Administrativo` | **US-27:** Contagem por status, tempos médios entre etapas e SSLs que expiram em até 2 dias |
+
+> A referência detalhada para os fronts (corpos, respostas e erros) é o `contract.md`, distribuído à parte (não versionado neste repositório).
 
 ---
 
@@ -189,6 +219,12 @@ Para conectar sua máquina local à Storage Account real do projeto (`stcptmmanu
 ```powershell
 dotnet user-secrets set "AzureStorage:ConnectionString" "<COLE_A_CONNECTION_STRING_AQUI>" --project CPTM.Manutencao.Api/CPTM.Manutencao.Api.csproj
 ```
+
+Para testar sem conta Azure, use o emulador **Azurite** e `AzureStorage:ConnectionString=UseDevelopmentStorage=true` (passo a passo no roteiro de deploy).
+
+- Connection string malformada: a API não sobe (erro claro no log).
+- Storage fora do ar: login e transições continuam 200 (a falha da fila é logada e o envio fica pausado por 30 s); criar/reenviar SSL com foto responde **503** `{ "erro": "O armazenamento de fotos está indisponível..." }`.
+- Em produção (Container Apps) a connection string vai como secret `storage-conn` lido via `secretref` em `AzureStorage__ConnectionString`, e o container `uploads` precisa de acesso anônimo de leitura a blobs (ver roteiro).
 
 ---
 

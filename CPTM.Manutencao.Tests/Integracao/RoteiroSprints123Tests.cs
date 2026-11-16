@@ -152,5 +152,102 @@ public sealed class RoteiroSprints123Tests : IClassFixture<CptmApiFactory>
         var passo49 = await Passo("49", HttpStatusCode.OK,
             tecnico.PutAsync("/api/Solicitacoes/10/concluir", CptmApiFactory.Json("{ \"laudo\": \"Placa reparada\" }")));
         Assert.Equal(StatusSolicitacao.Concluida, passo49!.Value.GetProperty("novoStatus").GetString());
+
+        await Passo("50", HttpStatusCode.Unauthorized, anonimo.PutAsync("/api/Solicitacoes/6/liberar-retirada", null));
+        await Passo("51", HttpStatusCode.Forbidden, comum.PutAsync("/api/Solicitacoes/6/liberar-retirada", null));
+        TemPropriedade("52", await Passo("52", HttpStatusCode.BadRequest, admin.PutAsync("/api/Solicitacoes/6/sem-reparo", null)), "erro");
+        var passo53 = await Passo("53", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/6/liberar-retirada", null));
+        Assert.Equal(StatusSolicitacao.AguardandoRetirada, passo53!.Value.GetProperty("novoStatus").GetString());
+        TemPropriedade("54", await Passo("54", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/10/sem-reparo",
+            CptmApiFactory.Json("{ \"observacao\": \"Sem peca no mercado\" }"))), "novoStatus");
+        TemPropriedade("55", await Passo("55", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/10/liberar-retirada", null)), "novoStatus");
+        TemPropriedade("56", await Passo("56", HttpStatusCode.BadRequest, admin.PutAsync("/api/Solicitacoes/1/inutilizar", null)), "erro");
+        TemPropriedade("57", await Passo("57", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/11/sem-reparo", null)), "novoStatus");
+        var passo58 = await Passo("58", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/11/inutilizar", null));
+        Assert.Equal(StatusSolicitacao.Inutilizado, passo58!.Value.GetProperty("novoStatus").GetString());
+        TemPropriedade("59", await Passo("59", HttpStatusCode.BadRequest, admin.PutAsync("/api/Solicitacoes/11/liberar-retirada", null)), "erro");
+        TemPropriedade("60", await Passo("60", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/1/aguardar-retirada", null)), "novoStatus");
+
+        const string autorizacao = "{ \"nome\": \"Maria Souza\", \"documento\": \"123.456.789-00\" }";
+        await Passo("61", HttpStatusCode.Forbidden, tecnico.PutAsync("/api/Solicitacoes/1/autorizar-retirada", CptmApiFactory.Json(autorizacao)));
+        TemPropriedade("62", await Passo("62", HttpStatusCode.BadRequest,
+            comum.PutAsync("/api/Solicitacoes/1/autorizar-retirada", CptmApiFactory.Json("{ \"nome\": \"Maria Souza\" }"))), "erro");
+        var passo63 = await Passo("63", HttpStatusCode.OK, comum.PutAsync("/api/Solicitacoes/1/autorizar-retirada", CptmApiFactory.Json(autorizacao)));
+        Assert.Equal(StatusSolicitacao.RetiradaAutorizada, passo63!.Value.GetProperty("novoStatus").GetString());
+        TemPropriedade("64", await Passo("64", HttpStatusCode.BadRequest,
+            comum.PutAsync("/api/Solicitacoes/1/autorizar-retirada", CptmApiFactory.Json(autorizacao))), "erro");
+        TemPropriedade("65", await Passo("65", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/10/autorizar-retirada",
+            CptmApiFactory.Json("{ \"nome\": \"Joao Lima\", \"documento\": \"tec999\" }"))), "novoStatus");
+
+        static StringContent Recebedor(string documento) => CptmApiFactory.Json($"{{ \"identificacaoRecebedor\": \"{documento}\" }}");
+        await Passo("66", HttpStatusCode.Forbidden, comum.PutAsync("/api/Solicitacoes/1/retirar", Recebedor("12345678900")));
+        TemPropriedade("67", await Passo("67", HttpStatusCode.BadRequest, admin.PutAsync("/api/Solicitacoes/1/retirar", Recebedor("99999999999"))), "erro");
+        var passo68 = await Passo("68", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/1/retirar", Recebedor("12345678900")));
+        Assert.Equal(StatusSolicitacao.Retirado, passo68!.Value.GetProperty("novoStatus").GetString());
+        TemPropriedade("69", await Passo("69", HttpStatusCode.BadRequest, admin.PutAsync("/api/Solicitacoes/6/retirar", Recebedor("12345678900"))), "erro");
+        TemPropriedade("70", await Passo("70", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/6/retirar", Recebedor("comum123"))), "novoStatus");
+        TemPropriedade("71", await Passo("71", HttpStatusCode.OK, admin.PutAsync("/api/Solicitacoes/10/retirar", Recebedor("comum123"))), "novoStatus");
+        TemPropriedade("72", await Passo("72", HttpStatusCode.BadRequest, admin.PutAsync("/api/Solicitacoes/1/retirar", Recebedor("12345678900"))), "erro");
+        var passo73 = await Passo("73", HttpStatusCode.OK, comum.GetAsync("/api/Solicitacoes/1"));
+        Assert.Equal(StatusSolicitacao.Retirado, passo73!.Value.GetProperty("status").GetString());
+        Assert.Equal("12345678900", passo73.Value.GetProperty("retiradoPorDocumento").GetString());
+        TemPropriedade("73", passo73, "dataRetirada");
+        TemPropriedade("74", await Passo("74", HttpStatusCode.BadRequest, admin.PutAsync("/api/Solicitacoes/11/retirar", Recebedor("comum123"))), "erro");
+
+        static List<string> Mensagens(JsonElement? corpo) =>
+            corpo!.Value.GetProperty("notificacoes").EnumerateArray().Select(n => n.GetProperty("mensagem").GetString()!).ToList();
+        await Passo("75", HttpStatusCode.Unauthorized, anonimo.GetAsync("/api/notificacoes"));
+        var passo76 = await Passo("76", HttpStatusCode.OK, comum.GetAsync("/api/notificacoes"));
+        var doComum = Mensagens(passo76);
+        Assert.Contains("Sua SSL 1 foi aprovada. Leve o equipamento à oficina.", doComum);
+        Assert.Contains("Sua SSL 2 foi devolvida para correção. Veja o motivo e reenvie.", doComum);
+        Assert.Contains("O equipamento da SSL 6 está pronto para retirada.", doComum);
+        Assert.Contains("O equipamento da SSL 1 foi retirado. Ciclo encerrado.", doComum);
+        Assert.DoesNotContain(doComum, m => m.Contains("12345678900") || m.Contains("123.456.789-00") || m.Contains("tec999"));
+        var naoLidasDoComum = passo76!.Value.GetProperty("naoLidas").GetInt32();
+        Assert.Equal(doComum.Count, naoLidasDoComum);
+        var doAdmin = Mensagens(await Passo("77", HttpStatusCode.OK, admin.GetAsync("/api/notificacoes")));
+        Assert.Contains("Novo pedido de peça na OSM 1 (SSL 10): Capacitor 100uF x2.", doAdmin);
+        Assert.Contains("A OSM da SSL 10 foi concluída. Defina o destino do equipamento.", doAdmin);
+        Assert.Contains("A OSM da SSL 6 não foi executada. Defina o destino do equipamento.", doAdmin);
+        var doTecnico = Mensagens(await Passo("78", HttpStatusCode.OK, tecnico.GetAsync("/api/notificacoes")));
+        Assert.Contains($"A peça do pedido {pedidoId} chegou: Capacitor 100uF x2 (OSM 1, SSL 10).", doTecnico);
+        var notificacaoDoComum = passo76.Value.GetProperty("notificacoes")[0].GetProperty("id").GetInt32();
+        await Passo("79", HttpStatusCode.Forbidden, tecnico.PutAsync($"/api/notificacoes/{notificacaoDoComum}/lida", null));
+        var passo80 = await Passo("80", HttpStatusCode.OK, comum.PutAsync($"/api/notificacoes/{notificacaoDoComum}/lida", null));
+        Assert.True(passo80!.Value.GetProperty("lida").GetBoolean());
+        TemPropriedade("80", passo80, "dataLeitura");
+        var passo81 = await Passo("81", HttpStatusCode.OK, comum.GetAsync("/api/notificacoes?naoLidas=true"));
+        Assert.Equal(naoLidasDoComum - 1, passo81!.Value.GetProperty("naoLidas").GetInt32());
+        Assert.DoesNotContain(passo81.Value.GetProperty("notificacoes").EnumerateArray(), n => n.GetProperty("id").GetInt32() == notificacaoDoComum);
+        TemPropriedade("82", await Passo("82", HttpStatusCode.NotFound, comum.PutAsync("/api/notificacoes/99999/lida", null)), "erro");
+        await Passo("83", HttpStatusCode.BadRequest, comum.GetAsync("/api/notificacoes?naoLidas=talvez"));
+
+        await Passo("84", HttpStatusCode.Unauthorized, anonimo.GetAsync("/api/solicitacoes/1/historico"));
+        await Passo("85", HttpStatusCode.Forbidden, comum.GetAsync("/api/solicitacoes/4/historico"));
+        await Passo("86", HttpStatusCode.Forbidden, tecnico.GetAsync("/api/solicitacoes/4/historico"));
+        var passo87 = await Passo("87", HttpStatusCode.OK, comum.GetAsync("/api/solicitacoes/1/historico"));
+        var linhasDoHistorico = passo87!.Value.EnumerateArray().ToList();
+        Assert.Equal("SOLICITADA", linhasDoHistorico[0].GetProperty("statusNovo").GetString());
+        Assert.Equal(StatusSolicitacao.Retirado, linhasDoHistorico[^1].GetProperty("statusNovo").GetString());
+        var datasDoHistorico = linhasDoHistorico.Select(l => l.GetProperty("data").GetString()!).ToList();
+        Assert.All(datasDoHistorico, d => Assert.EndsWith("Z", d));
+        Assert.Equal(datasDoHistorico.OrderBy(d => d, StringComparer.Ordinal), datasDoHistorico);
+        Assert.DoesNotContain("12345678900", passo87.Value.GetRawText());
+        Assert.Equal(passo73.Value.GetProperty("historico").GetRawText(), passo87.Value.GetRawText());
+        await Passo("88", HttpStatusCode.OK, admin.GetAsync("/api/solicitacoes/10/historico"));
+        await Passo("89", HttpStatusCode.OK, tecnico.GetAsync("/api/solicitacoes/1/historico"));
+        TemPropriedade("90", await Passo("90", HttpStatusCode.NotFound, admin.GetAsync("/api/solicitacoes/99999/historico")), "erro");
+
+        await Passo("91", HttpStatusCode.Unauthorized, anonimo.GetAsync("/api/dashboard"));
+        await Passo("92", HttpStatusCode.Forbidden, comum.GetAsync("/api/dashboard"));
+        await Passo("93", HttpStatusCode.Forbidden, tecnico.GetAsync("/api/dashboard"));
+        var passo94 = await Passo("94", HttpStatusCode.OK, admin.GetAsync("/api/dashboard"));
+        var porStatus = passo94!.Value.GetProperty("porStatus").EnumerateArray()
+            .ToDictionary(c => c.GetProperty("status").GetString()!, c => c.GetProperty("quantidade").GetInt32());
+        Assert.Equal(passo94.Value.GetProperty("totalSolicitacoes").GetInt32(), porStatus.Values.Sum());
+        Assert.Equal(3, porStatus[StatusSolicitacao.Retirado]);
+        Assert.Equal(3, passo94.Value.GetProperty("temposMedios").GetArrayLength());
+        TemPropriedade("94", passo94, "expiramEmAteDoisDias");
     }
 }

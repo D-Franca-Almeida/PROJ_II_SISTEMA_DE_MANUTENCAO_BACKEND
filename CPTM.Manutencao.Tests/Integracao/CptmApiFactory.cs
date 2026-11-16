@@ -15,6 +15,8 @@ public sealed class CptmApiFactory : WebApplicationFactory<Program>
 
     public string PastaUploads { get; } = Path.Combine(Path.GetTempPath(), $"cptm-uploads-{Guid.NewGuid():N}");
 
+    public string ConexaoAzureStorage { get; init; } = "";
+
     private string StringDeConexao => $"Data Source={_arquivoBanco}";
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -24,7 +26,7 @@ public sealed class CptmApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Database:RecriarAoIniciar", "true");
         builder.UseSetting("ConnectionStrings:Sqlite", StringDeConexao);
         builder.UseSetting("Uploads:Raiz", PastaUploads);
-        builder.UseSetting("AzureStorage:ConnectionString", "");
+        builder.UseSetting("AzureStorage:ConnectionString", ConexaoAzureStorage);
         builder.UseSetting("Prazos:ExecucaoAutomatica", "false");
     }
 

@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using CPTM.Manutencao.Api.Models;
 using CPTM.Manutencao.Api.Services;
+using CPTM.Manutencao.Api.Features.Destino.Commands;
+using CPTM.Manutencao.Api.Features.Historico.Queries;
+using CPTM.Manutencao.Api.Features.Retirada.Commands;
 
 namespace CPTM.Manutencao.Api.Controllers
 {
@@ -75,6 +78,30 @@ namespace CPTM.Manutencao.Api.Controllers
             }
         }
 
+        // LINHA DO TEMPO (dono, Administrativo e Técnico da OSM) - US-26
+        [HttpGet("{id:int}/historico")]
+        [Authorize]
+        public IActionResult Historico(int id, [FromServices] IObterHistoricoHandler handler)
+        {
+            var matricula = User.FindFirst("Matricula")?.Value;
+            var perfil = User.FindFirst("Perfil")?.Value;
+            if (string.IsNullOrEmpty(matricula) || string.IsNullOrEmpty(perfil))
+                return Forbid();
+
+            try
+            {
+                return Ok(handler.Executar(id, matricula, perfil));
+            }
+            catch (SolicitacaoNaoEncontradaException ex)
+            {
+                return NotFound(new { erro = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+        }
+
         // ABRIR SSL com foto (Apenas Comum) - US-03
         [HttpPost]
         [Authorize(Policy = "RequerPerfilComum")]
@@ -97,6 +124,10 @@ namespace CPTM.Manutencao.Api.Controllers
             {
                 return BadRequest(new { erro = ex.Message });
             }
+            catch (ArmazenamentoIndisponivelException ex)
+            {
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { erro = ex.Message });
+            }
         }
 
         // REENVIAR SSL devolvida (Apenas Comum dono) - US-06
@@ -115,6 +146,10 @@ namespace CPTM.Manutencao.Api.Controllers
             try
             {
                 return Ok(await _solicitacaoService.ReenviarAsync(id, requisicao, matricula));
+            }
+            catch (ArmazenamentoIndisponivelException ex)
+            {
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { erro = ex.Message });
             }
             catch (SolicitacaoNaoEncontradaException ex)
             {
@@ -313,8 +348,9 @@ namespace CPTM.Manutencao.Api.Controllers
             }
         }
 
-        // 📦 US-10 (caminho 1): Admin libera para retirada (CONCLUIDA -> AGUARDANDO RETIRADA)
+        // 📦 US-10: Admin libera para retirada (CONCLUIDA | NAO EXECUTADA | SEM REPARO -> AGUARDANDO RETIRADA)
         [HttpPut("{id:int}/aguardar-retirada")]
+        [HttpPut("{id:int}/liberar-retirada")]
         [Authorize(Policy = "RequerPerfilAdmin")]
         public IActionResult DisponibilizarParaRetirada(int id, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] DestinoDto? dto = null)
         {
@@ -337,6 +373,35 @@ namespace CPTM.Manutencao.Api.Controllers
 
             return Executar(() => _workflowService.CondenarSemReparo(id, matricula, dto?.Observacao),
                 "Equipamento classificado como Sem Reparo (baixa técnica).", StatusSolicitacao.SemReparo);
+        }
+
+        // US-10: Admin descarta o equipamento (SEM REPARO -> INUTILIZADO, estado final)
+        [HttpPut("{id:int}/inutilizar")]
+        [Authorize(Policy = "RequerPerfilAdmin")]
+        public IActionResult Inutilizar(int id, [FromServices] IInutilizarEquipamentoHandler handler,
+            [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] DestinoDto? dto = null)
+        {
+            var matricula = User.FindFirst("Matricula")?.Value;
+            if (string.IsNullOrEmpty(matricula))
+                return Forbid();
+
+            return Executar(() => handler.Executar(id, matricula, dto?.Observacao),
+                "Equipamento inutilizado (descarte).", StatusSolicitacao.Inutilizado);
+        }
+
+        // US-24: autorização de retirada por terceiro (Comum dono ou Admin; AGUARDANDO RETIRADA -> RETIRADA AUTORIZADA)
+        [HttpPut("{id:int}/autorizar-retirada")]
+        [Authorize]
+        public IActionResult AutorizarRetirada(int id, [FromServices] IAutorizarRetiradaHandler handler,
+            [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] AutorizarRetiradaRequest? dto = null)
+        {
+            var matricula = User.FindFirst("Matricula")?.Value;
+            var perfil = User.FindFirst("Perfil")?.Value;
+            if (string.IsNullOrEmpty(matricula) || (perfil != "Administrativo" && perfil != "Comum"))
+                return Forbid();
+
+            return Executar(() => handler.Executar(id, dto, matricula, perfil),
+                "Retirada autorizada para o terceiro informado.", StatusSolicitacao.RetiradaAutorizada);
         }
 
         // 🤝 US-11: Protocolo de retirada (AGUARDANDO RETIRADA -> RETIRADO)

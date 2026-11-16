@@ -5,6 +5,12 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using CPTM.Manutencao.Api.Services;
 using CPTM.Manutencao.Api.Data;
+using CPTM.Manutencao.Api.Features.Destino.Commands;
+using CPTM.Manutencao.Api.Features.Retirada.Commands;
+using CPTM.Manutencao.Api.Features.Notificacoes.Commands;
+using CPTM.Manutencao.Api.Features.Notificacoes.Queries;
+using CPTM.Manutencao.Api.Features.Historico.Queries;
+using CPTM.Manutencao.Api.Features.Dashboard.Queries;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -35,6 +41,15 @@ builder.Services.AddScoped<IOrdemServicoRepository, OrdemServicoRepository>();
 builder.Services.AddScoped<IPedidoPecaRepository, PedidoPecaRepository>();
 builder.Services.AddScoped<IPedidoPecaService, PedidoPecaService>();
 builder.Services.AddScoped<ISolicitacaoService, SolicitacaoService>();
+builder.Services.AddScoped<IInutilizarEquipamentoHandler, InutilizarEquipamentoHandler>();
+builder.Services.AddScoped<IAutorizarRetiradaHandler, AutorizarRetiradaHandler>();
+builder.Services.AddScoped<INotificacaoRepository, NotificacaoRepository>();
+builder.Services.AddScoped<IGeradorDeNotificacoes, GeradorDeNotificacoes>();
+builder.Services.AddScoped<IListarNotificacoesHandler, ListarNotificacoesHandler>();
+builder.Services.AddScoped<IMarcarNotificacaoComoLidaHandler, MarcarNotificacaoComoLidaHandler>();
+builder.Services.AddScoped<IObterHistoricoHandler, ObterHistoricoHandler>();
+builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
+builder.Services.AddScoped<IObterDashboardHandler, ObterDashboardHandler>();
 
 // Expiração (US-20): prazo e agendamento em Prazos:*; o relógio é injetável (TimeProvider) para os testes.
 var prazos = builder.Configuration.GetSection("Prazos").Get<PrazosOptions>() ?? new PrazosOptions();
@@ -56,6 +71,7 @@ var azureStorage = builder.Configuration.GetSection("AzureStorage").Get<AzureSto
 builder.Services.AddSingleton(azureStorage);
 if (!string.IsNullOrWhiteSpace(azureStorage.ConnectionString))
 {
+    AzureStorageOptions.ValidarConnectionString(azureStorage.ConnectionString);
     builder.Services.AddSingleton<IFotoStorage, AzureBlobFotoStorage>();
     builder.Services.AddSingleton<INotificacaoQueue, AzureQueueNotificacaoService>();
 }

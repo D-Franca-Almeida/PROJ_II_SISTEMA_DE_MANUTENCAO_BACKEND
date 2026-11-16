@@ -112,6 +112,38 @@ Verificar 47 "PUT /pedidos-peca/2/cancelar (Recebido)"    400 (Chamar "Put" "/ap
 Verificar 48 "GET /ordens-servico/1/pecas Tecnico"        200 (Chamar "Get" "/api/ordens-servico/1/pecas" $tokTec)
 Verificar 49 "PUT /10/concluir (peca recebida)"           200 (Chamar "Put" "/api/Solicitacoes/10/concluir" $tokTec '{ "laudo": "Placa reparada" }')
 
+Write-Host "== Etapa 9: Destino do equipamento (US-10) ==" -ForegroundColor Cyan
+Verificar 50 "PUT /6/liberar-retirada sem token"          401 (Chamar "Put" "/api/Solicitacoes/6/liberar-retirada" $null)
+Verificar 51 "PUT /6/liberar-retirada Comum"              403 (Chamar "Put" "/api/Solicitacoes/6/liberar-retirada" $tokComum)
+Verificar 52 "PUT /6/sem-reparo (NAO EXECUTADA)"          400 (Chamar "Put" "/api/Solicitacoes/6/sem-reparo" $tokAdmin)
+Verificar 53 "PUT /6/liberar-retirada (NAO EXECUTADA)"    200 (Chamar "Put" "/api/Solicitacoes/6/liberar-retirada" $tokAdmin)
+Verificar 54 "PUT /10/sem-reparo Admin"                   200 (Chamar "Put" "/api/Solicitacoes/10/sem-reparo" $tokAdmin '{ "observacao": "Sem peca no mercado" }')
+Verificar 55 "PUT /10/liberar-retirada (SEM REPARO)"      200 (Chamar "Put" "/api/Solicitacoes/10/liberar-retirada" $tokAdmin)
+Verificar 56 "PUT /1/inutilizar (CONCLUIDA)"              400 (Chamar "Put" "/api/Solicitacoes/1/inutilizar" $tokAdmin)
+Verificar 57 "PUT /11/sem-reparo Admin"                   200 (Chamar "Put" "/api/Solicitacoes/11/sem-reparo" $tokAdmin)
+Verificar 58 "PUT /11/inutilizar Admin"                   200 (Chamar "Put" "/api/Solicitacoes/11/inutilizar" $tokAdmin)
+Verificar 59 "PUT /11/liberar-retirada (INUTILIZADO)"     400 (Chamar "Put" "/api/Solicitacoes/11/liberar-retirada" $tokAdmin)
+Verificar 60 "PUT /1/aguardar-retirada Admin"             200 (Chamar "Put" "/api/Solicitacoes/1/aguardar-retirada" $tokAdmin)
+
+Write-Host "== Etapa 10: Autorizacao de retirada por terceiro (US-24) ==" -ForegroundColor Cyan
+$autorizacao = '{ "nome": "Maria Souza", "documento": "123.456.789-00" }'
+Verificar 61 "PUT /1/autorizar-retirada Tecnico"          403 (Chamar "Put" "/api/Solicitacoes/1/autorizar-retirada" $tokTec $autorizacao)
+Verificar 62 "PUT /1/autorizar-retirada sem documento"    400 (Chamar "Put" "/api/Solicitacoes/1/autorizar-retirada" $tokComum '{ "nome": "Maria Souza" }')
+Verificar 63 "PUT /1/autorizar-retirada Comum dono"       200 (Chamar "Put" "/api/Solicitacoes/1/autorizar-retirada" $tokComum $autorizacao)
+Verificar 64 "PUT /1/autorizar-retirada de novo"          400 (Chamar "Put" "/api/Solicitacoes/1/autorizar-retirada" $tokComum $autorizacao)
+Verificar 65 "PUT /10/autorizar-retirada Admin"           200 (Chamar "Put" "/api/Solicitacoes/10/autorizar-retirada" $tokAdmin '{ "nome": "Joao Lima", "documento": "tec999" }')
+
+Write-Host "== Etapa 11: Protocolo de retirada (US-11) ==" -ForegroundColor Cyan
+Verificar 66 "PUT /1/retirar Comum"                       403 (Chamar "Put" "/api/Solicitacoes/1/retirar" $tokComum '{ "identificacaoRecebedor": "12345678900" }')
+Verificar 67 "PUT /1/retirar documento errado"            400 (Chamar "Put" "/api/Solicitacoes/1/retirar" $tokAdmin '{ "identificacaoRecebedor": "99999999999" }')
+Verificar 68 "PUT /1/retirar terceiro autorizado"         200 (Chamar "Put" "/api/Solicitacoes/1/retirar" $tokAdmin '{ "identificacaoRecebedor": "12345678900" }')
+Verificar 69 "PUT /6/retirar terceiro sem autorizacao"    400 (Chamar "Put" "/api/Solicitacoes/6/retirar" $tokAdmin '{ "identificacaoRecebedor": "12345678900" }')
+Verificar 70 "PUT /6/retirar solicitante"                 200 (Chamar "Put" "/api/Solicitacoes/6/retirar" $tokAdmin '{ "identificacaoRecebedor": "comum123" }')
+Verificar 71 "PUT /10/retirar solicitante (autorizada)"   200 (Chamar "Put" "/api/Solicitacoes/10/retirar" $tokAdmin '{ "identificacaoRecebedor": "comum123" }')
+Verificar 72 "PUT /1/retirar de novo (RETIRADO)"          400 (Chamar "Put" "/api/Solicitacoes/1/retirar" $tokAdmin '{ "identificacaoRecebedor": "12345678900" }')
+Verificar 73 "GET /1 Comum (dados da retirada)"           200 (Chamar "Get" "/api/Solicitacoes/1" $tokComum)
+Verificar 74 "PUT /11/retirar (INUTILIZADO)"              400 (Chamar "Put" "/api/Solicitacoes/11/retirar" $tokAdmin '{ "identificacaoRecebedor": "comum123" }')
+
 Write-Host ""
 if ($script:falhas -eq 0) { Write-Host "TODOS OS PASSOS VALIDADOS." -ForegroundColor Green }
 else { Write-Host "$($script:falhas) passo(s) com falha." -ForegroundColor Red; exit 1 }

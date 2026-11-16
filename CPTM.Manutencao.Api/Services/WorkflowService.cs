@@ -92,12 +92,16 @@ namespace CPTM.Manutencao.Api.Services
         private readonly ISolicitacaoRepository _repositorio;
         private readonly TimeProvider _relogio;
         private readonly INotificacaoQueue? _fila;
+        private readonly IGeradorDeNotificacoes? _notificacoes;
+        private List<EventoSistemaMensagem>? _eventosAposCommit;
 
-        public WorkflowService(ISolicitacaoRepository repositorio, TimeProvider? relogio = null, INotificacaoQueue? fila = null)
+        public WorkflowService(ISolicitacaoRepository repositorio, TimeProvider? relogio = null, INotificacaoQueue? fila = null,
+            IGeradorDeNotificacoes? notificacoes = null)
         {
             _repositorio = repositorio;
             _relogio = relogio ?? TimeProvider.System;
             _fila = fila;
+            _notificacoes = notificacoes;
         }
 
         public void AprovarTriagem(int id, string matriculaLogada)
@@ -195,7 +199,7 @@ namespace CPTM.Manutencao.Api.Services
             ordem.Laudo = texto;
             ordem.DataConclusao = _relogio.GetUtcNow().UtcDateTime;
             // Um pedido criado entre a leitura e a gravação também bloqueia: a checagem é refeita no banco, na mesma transação
-            _repositorio.EmTransacao(() =>
+            EmTransacaoPublicandoAoFinal(() =>
             {
                 Transicionar(solicitacao, StatusSolicitacao.Concluida, ordem.MatriculaTecnico, $"OSM {ordem.Id} concluída.");
                 var pendentesAgora = _repositorio.ListarPedidosPendentes(ordem.Id);
@@ -229,7 +233,7 @@ namespace CPTM.Manutencao.Api.Services
             ordem.MotivoNaoExecucao = texto;
             ordem.DataConclusao = agora;
             // Um pedido criado entre a leitura e a gravação ficaria pendente numa OSM encerrada: desfaz tudo e responde 409
-            _repositorio.EmTransacao(() =>
+            EmTransacaoPublicandoAoFinal(() =>
             {
                 Transicionar(solicitacao, StatusSolicitacao.NaoExecutada, ordem.MatriculaTecnico, texto);
                 if (_repositorio.ListarPedidosPendentes(ordem.Id).Count > 0)
@@ -318,9 +322,10 @@ namespace CPTM.Manutencao.Api.Services
             };
 
             solicitacao.Status = novoStatus;
+            _notificacoes?.GerarDaTransicao(solicitacao, historico);
             _repositorio.Salvar(solicitacao, historico);
 
-            _fila?.Publicar(new EventoSistemaMensagem(
+            PublicarMudancaDeStatus(new EventoSistemaMensagem(
                 "MUDANCA_STATUS",
                 historico.Matricula,
                 solicitacao.Id,
@@ -330,55 +335,105 @@ namespace CPTM.Manutencao.Api.Services
                 historico.Data));
         }
 
-        public const int TamanhoMaximoObservacao = 500;
+        private void PublicarMudancaDeStatus(EventoSistemaMensagem evento)
+        {
+            if (_eventosAposCommit is not null)
+                _eventosAposCommit.Add(evento);
+            else
+                _fila?.Publicar(evento);
+        }
+
+        // Transições dentro da transação só publicam depois do commit: um rollback não deixa evento fantasma na fila
+        private void EmTransacaoPublicandoAoFinal(Action acao)
+        {
+            var pendentes = new List<EventoSistemaMensagem>();
+            _eventosAposCommit = pendentes;
+            try
+            {
+                _repositorio.EmTransacao(acao);
+            }
+            finally
+            {
+                _eventosAposCommit = null;
+            }
+
+            foreach (var evento in pendentes)
+                _fila?.Publicar(evento);
+        }
+
         public const int TamanhoMaximoIdentificacao = 100;
 
-        // US-10 (caminho 1): CONCLUIDA -> AGUARDANDO RETIRADA
+        private static readonly string[] OrigensLiberarRetirada =
+            { StatusSolicitacao.Concluida, StatusSolicitacao.NaoExecutada, StatusSolicitacao.SemReparo };
+        private static readonly string[] OrigensSemReparo = { StatusSolicitacao.Concluida };
+
+        // US-10: CONCLUIDA | NAO EXECUTADA | SEM REPARO (solicitante quer de volta) -> AGUARDANDO RETIRADA
         public void DisponibilizarParaRetirada(int id, string matriculaAdmin, string? observacao = null) =>
-            DefinirDestino(id, StatusSolicitacao.AguardandoRetirada, matriculaAdmin, observacao);
+            DefinirDestino(id, StatusSolicitacao.AguardandoRetirada, OrigensLiberarRetirada, matriculaAdmin, observacao);
 
-        // US-10 (caminho 2): CONCLUIDA -> SEM REPARO (fim do fluxo operacional: não há retirada)
+        // US-10: CONCLUIDA -> SEM REPARO (depois: INUTILIZADO ou de volta para AGUARDANDO RETIRADA)
         public void CondenarSemReparo(int id, string matriculaAdmin, string? observacao = null) =>
-            DefinirDestino(id, StatusSolicitacao.SemReparo, matriculaAdmin, observacao);
+            DefinirDestino(id, StatusSolicitacao.SemReparo, OrigensSemReparo, matriculaAdmin, observacao);
 
-        private void DefinirDestino(int id, string novoStatus, string matriculaAdmin, string? observacao)
+        private void DefinirDestino(int id, string novoStatus, string[] origens, string matriculaAdmin, string? observacao)
         {
             var solicitacao = _repositorio.ObterPorId(id)
                 ?? throw new SolicitacaoNaoEncontradaException(id);
 
-            if (solicitacao.Status != StatusSolicitacao.Concluida)
+            if (!origens.Contains(solicitacao.Status))
                 throw new RegraDeNegocioException(
-                    $"Transição inválida: a solicitação precisa estar CONCLUIDA para ir para {novoStatus} (status atual: {solicitacao.Status}).");
+                    $"Transição inválida: a solicitação precisa estar {string.Join(" ou ", origens)} para ir para {novoStatus} (status atual: {solicitacao.Status}).");
 
-            var texto = string.IsNullOrWhiteSpace(observacao) ? null : observacao.Trim();
-            if (texto is not null && texto.Length > TamanhoMaximoObservacao)
-                throw new RegraDeNegocioException($"A observação deve ter no máximo {TamanhoMaximoObservacao} caracteres.");
-
+            var texto = ObservacaoDestino.Normalizar(observacao);
             solicitacao.ObservacaoDestino = texto;
             Transicionar(solicitacao, novoStatus, matriculaAdmin, texto);
         }
 
-        // US-11: AGUARDANDO RETIRADA -> RETIRADO
+        // US-11: AGUARDANDO RETIRADA | RETIRADA AUTORIZADA (US-24) -> RETIRADO
         public void RegistrarRetirada(int id, string matriculaAdmin, string identificacaoRecebedor)
         {
             var solicitacao = _repositorio.ObterPorId(id)
                 ?? throw new SolicitacaoNaoEncontradaException(id);
 
-            if (solicitacao.Status != StatusSolicitacao.AguardandoRetirada)
+            if (solicitacao.Status != StatusSolicitacao.AguardandoRetirada && solicitacao.Status != StatusSolicitacao.RetiradaAutorizada)
                 throw new RegraDeNegocioException(
-                    $"Transição inválida: apenas equipamentos AGUARDANDO RETIRADA podem ser entregues (status atual: {solicitacao.Status}).");
+                    $"Transição inválida: apenas equipamentos AGUARDANDO RETIRADA ou RETIRADA AUTORIZADA podem ser entregues (status atual: {solicitacao.Status}).");
 
             if (string.IsNullOrWhiteSpace(identificacaoRecebedor))
                 throw new RegraDeNegocioException("O CPF ou matrícula do responsável pela retirada é obrigatório.");
             var identificacao = identificacaoRecebedor.Trim();
             if (identificacao.Length > TamanhoMaximoIdentificacao)
                 throw new RegraDeNegocioException($"A identificação do recebedor deve ter no máximo {TamanhoMaximoIdentificacao} caracteres.");
+            ValidarDocumentoDoRecebedor(solicitacao, identificacao);
 
             solicitacao.IdentificacaoRetirada = identificacao;
             solicitacao.DataRetirada = _relogio.GetUtcNow().UtcDateTime;
             // O CPF/matrícula fica só na SSL; o histórico registra apenas o Admin que fez o protocolo
             Transicionar(solicitacao, StatusSolicitacao.Retirado, matriculaAdmin, "Protocolo de retirada registrado.");
         }
+
+        // US-11: o solicitante sempre pode retirar; o terceiro, só com a autorização da US-24
+        private static void ValidarDocumentoDoRecebedor(Solicitacao solicitacao, string documento)
+        {
+            if (MesmoDocumento(documento, solicitacao.MatriculaSolicitante))
+                return;
+            if (solicitacao.Status == StatusSolicitacao.RetiradaAutorizada && MesmoDocumento(documento, solicitacao.AutorizadoDocumento))
+                return;
+
+            throw new RegraDeNegocioException(solicitacao.Status == StatusSolicitacao.RetiradaAutorizada
+                ? "O documento informado não confere com a matrícula do solicitante nem com o documento autorizado."
+                : "O documento informado não confere com a matrícula do solicitante. Para outra pessoa retirar, registre antes a autorização de retirada.");
+        }
+
+        // Compara CPF/matrícula ignorando pontuação, espaços e maiúsculas (123.456.789-00 == 12345678900)
+        private static bool MesmoDocumento(string informado, string? esperado)
+        {
+            var normalizado = SoLetrasEDigitos(informado);
+            return normalizado.Length > 0 && esperado is not null &&
+                string.Equals(normalizado, SoLetrasEDigitos(esperado), StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string SoLetrasEDigitos(string texto) => new(texto.Where(char.IsLetterOrDigit).ToArray());
 
         // Busca a solicitação e garante que ela está apta para triagem:
         // só SOLICITADA ou REENVIADA podem sofrer aprovação/devolução/cancelamento.
