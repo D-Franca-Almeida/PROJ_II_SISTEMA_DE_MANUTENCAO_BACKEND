@@ -151,7 +151,8 @@ namespace CPTM.Manutencao.Api.Services
 
         public async Task<string> SalvarAsync(IFormFile arquivo, string extensao)
         {
-            var nomeBlob = $"{Subpasta}/{Guid.NewGuid():N}{extensao}";
+            var nomeBase = NomeSeguroDoArquivo(arquivo.FileName);
+            var nomeBlob = $"{Subpasta}/{nomeBase}{extensao}";
             var blob = _container.GetBlobClient(nomeBlob);
 
             var contentType = extensao.Equals(".png", StringComparison.OrdinalIgnoreCase)
@@ -174,6 +175,18 @@ namespace CPTM.Manutencao.Api.Services
             }
 
             return blob.Uri.ToString();
+        }
+
+        public static string NomeSeguroDoArquivo(string? fileName)
+        {
+            var semExtensao = Path.GetFileNameWithoutExtension(fileName ?? string.Empty).Trim();
+            var caracteresSeguros = semExtensao
+                .Select(c => char.IsLetterOrDigit(c) || c == '-' || c == '_' ? c : (char.IsWhiteSpace(c) ? '-' : '\0'))
+                .Where(c => c != '\0')
+                .Take(80)
+                .ToArray();
+            var limpo = new string(caracteresSeguros).Trim('-', '_');
+            return string.IsNullOrEmpty(limpo) ? Guid.NewGuid().ToString("N") : limpo;
         }
 
         public void Excluir(string url)
